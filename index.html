@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b1018" />
+  <title>NVL72 Rail Planner</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1018; --panel:#121a25; --panel2:#172230; --line:#283747; --muted:#92a2b3; --text:#edf4fb; --accent:#80e0c1; }
+    * { box-sizing:border-box }
+    body { margin:0; background:radial-gradient(ellipse at 5% 0%,#17312f 0,transparent 32%),var(--bg); color:var(--text); font:14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .shell { max-width:1500px; margin:auto; padding:34px 30px 42px }
+    header { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:28px }
+    .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:700; display:flex; gap:9px; align-items:center }
+    .eyebrow:before { content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 14px #80e0c188 }
+    h1 { margin:10px 0 8px; font-size:clamp(28px,4vw,42px); line-height:1.08; letter-spacing:-.04em; font-weight:650 }
+    .intro { margin:0; color:#a9b8c6; max-width:690px; font-size:15px }
+    .mark { border:1px solid #304554; background:#11201f; color:#c8f4e5; border-radius:12px; padding:11px 14px; font-size:12px; white-space:nowrap; margin-top:8px }
+    .layout { display:grid; grid-template-columns:310px minmax(0,1fr); gap:18px; align-items:start }
+    .panel { background:linear-gradient(145deg,#141e2a,#101720); border:1px solid #263444; border-radius:16px; box-shadow:0 16px 45px #0002 }
+    .controls { padding:21px; position:sticky; top:16px }
+    .panel-title { margin:0; font-size:15px; font-weight:650; letter-spacing:-.01em }
+    .sub { margin:5px 0 19px; color:var(--muted); font-size:12px }
+    label { display:block; color:#d7e1e9; font-size:12px; font-weight:600; margin:16px 0 7px }
+    .field { position:relative }
+    input[type="number"] { appearance:none; width:100%; padding:11px 43px 11px 12px; background:#0b121a; color:var(--text); border:1px solid #344657; border-radius:9px; font:600 15px inherit; font-size:15px; outline:none; transition:border .15s,box-shadow .15s }
+    input[type="number"]:focus { border-color:var(--accent); box-shadow:0 0 0 3px #80e0c11b }
+    .suffix { position:absolute; top:50%; right:12px; transform:translateY(-50%); font-size:11px; color:#8295a7; pointer-events:none }
+    .hint { color:#8395a6; font-size:11px; margin:6px 0 0 }
+    .toggle-row { display:flex; align-items:flex-start; gap:9px; margin-top:17px; padding:11px 10px; border:1px solid #304253; background:#0d151e; border-radius:9px; cursor:pointer }
+    .toggle-row input { appearance:auto; flex:0 0 auto; width:15px; height:15px; margin:1px 0 0; accent-color:var(--accent) }
+    .toggle-copy { color:#dce7ee; font-size:11px; font-weight:650; line-height:1.35 }
+    .toggle-copy small { display:block; color:#8fa1b1; font-size:10px; font-weight:400; margin-top:3px }
+    .assumption { margin-top:19px; border-top:1px solid #293746; padding-top:16px; color:#9aabb9; font-size:11px }
+    .assumption strong { color:#d3e0e9; font-weight:600 }
+    .rail-key { margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:8px 10px }
+    .key-item { display:flex; align-items:center; gap:7px; color:#b9c6d0; font-size:11px }
+    .swatch { width:9px; height:9px; border-radius:3px; box-shadow:0 0 9px currentColor }
+    .main { min-width:0 }
+    .stats { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:14px }
+    .stat { padding:15px 16px; }
+    .stat-label { font-size:10px; color:#8fa1b1; text-transform:uppercase; letter-spacing:.1em; font-weight:700 }
+    .stat-value { font-size:25px; font-weight:650; letter-spacing:-.04em; margin-top:3px }
+    .stat-detail { color:#8496a5; font-size:10px; margin-top:1px }
+    .diagram-card { overflow:hidden }
+    .diagram-head { display:flex; justify-content:space-between; align-items:center; padding:18px 20px 14px; border-bottom:1px solid #283746; gap:12px }
+    .diagram-head p { color:#8fa1b1; font-size:11px; margin:3px 0 0 }
+    .diagram-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px }
+    .zoom-control { display:flex; align-items:center; gap:6px; border:1px solid #344657; border-radius:8px; background:#0d151e; padding:4px 7px }
+    .zoom-control input { width:74px; accent-color:var(--accent) }
+    .zoom-value { min-width:33px; color:#aebdca; font-size:10px; text-align:right }
+    .action-button { color:#dce7ee; background:#182431; border:1px solid #405365; border-radius:8px; padding:7px 9px; font:600 10px inherit; font-size:10px; cursor:pointer; white-space:nowrap }
+    .action-button:hover { border-color:var(--accent); color:#c8f4e5 }
+    .badge { border:1px solid #28604f; color:#9cf0d0; background:#10271f; border-radius:99px; font-size:10px; font-weight:700; padding:6px 9px; letter-spacing:.04em; white-space:nowrap }
+    .badge.warn { color:#ffd69b; border-color:#71542e; background:#2b2012 }
+    .diagram-scroll { overflow:auto; background-color:#0d141d; background-image:radial-gradient(#324150 0.7px,transparent .7px); background-size:18px 18px; min-height:410px; max-height:74vh; }
+    svg { display:block; min-width:100%; }
+    .empty { padding:50px 22px; text-align:center; color:#9aabb8 }
+    .empty strong { display:block; font-size:14px; color:#dce6ed; margin-bottom:6px }
+    .legend { display:flex; flex-wrap:wrap; align-items:center; gap:15px; padding:12px 20px; border-top:1px solid #283746; color:#9aacba; font-size:10px }
+    .legend-line { display:inline-block; width:18px; height:2px; background:#b2c1cd; vertical-align:middle; margin-right:6px }
+    .legend-line.up { background:#c4d4e0; opacity:.58; height:1px }
+    .rail-card { padding:17px 20px; margin-top:14px }
+    .rail-card h2 { margin:0 0 13px; font-size:14px }
+    .rail-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px }
+    .rail-row { background:#0d151e; border:1px solid #263442; border-radius:9px; padding:10px 11px; display:flex; align-items:center; justify-content:space-between; gap:8px }
+    .rail-name { display:flex; align-items:center; gap:8px; font-weight:650; font-size:12px }
+    .rail-meta { color:#93a4b2; font-size:10px; text-align:right }
+    .footer { color:#718493; font-size:10px; margin:15px 2px 0 }
+    @media(max-width:940px) { .layout{grid-template-columns:1fr}.controls{position:static}.rail-key{grid-template-columns:repeat(4,1fr)} }
+    @media(max-width:1000px) { .stats{grid-template-columns:repeat(3,1fr)} }
+    @media(max-width:640px) { .shell{padding:23px 14px}.mark{display:none}.stats{grid-template-columns:repeat(2,1fr)}.rail-grid{grid-template-columns:repeat(2,1fr)}.rail-key{grid-template-columns:repeat(2,1fr)}.diagram-head{align-items:flex-start;flex-direction:column}.diagram-actions{justify-content:flex-start} }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><div class="eyebrow">Fabric design tool</div><h1>NVL72 Rail Planner</h1><p class="intro">Explore a GPU rail cabling layout across NVL72 racks. GPU downlinks are mapped to their matching rail, and ToR uplink capacity determines whether the fabric is non-blocking or oversubscribed.</p></div>
+      <div class="mark">NVL72 · 9 trays · 72 GPUs / rack</div>
+    </header>
+    <div class="layout">
+      <aside class="panel controls">
+        <h2 class="panel-title">Fabric inputs</h2><p class="sub">Change the scale and switch port budget.</p>
+        <label for="racks">NVL72 racks</label><div class="field"><input id="racks" type="number" min="1" max="32" value="2" /><span class="suffix">racks</span></div><p class="hint">Each rack contains 9 compute trays.</p>
+        <label for="ports">Interfaces per ToR switch</label><div class="field"><input id="ports" type="number" min="4" max="256" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">GPU downlinks are assigned first; remaining ports serve spine uplinks.</p>
+        <label for="spine-ports">Interfaces per spine switch</label><div class="field"><input id="spine-ports" type="number" min="4" max="256" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">Spine count is sized to the total ToR uplink demand.</p>
+        <label for="downlink-speed">GPU downlink speed</label><div class="field"><input id="downlink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div>
+        <label for="uplink-speed">ToR-to-spine uplink speed</label><div class="field"><input id="uplink-speed" type="number" min="25" max="1600" step="25" value="800" /><span class="suffix">Gb/s</span></div><p class="hint">Uplink ports are sized by bandwidth. For example, 2 × 400G downlinks need 1 × 800G uplink.</p>
+        <label class="toggle-row" for="prevent-oversub"><input id="prevent-oversub" type="checkbox" /><span class="toggle-copy">Prevent oversubscription<small>Ensure each ToR has at least 1:1 uplink bandwidth</small></span></label>
+        <div class="assumption"><strong>Rail mapping</strong><br>GPU index 0–7 maps to rail 0–7. Each tray contributes one GPU to every rail. ToR ratios compare GPU downlink bandwidth with ToR-to-spine uplink bandwidth.</div>
+        <div class="rail-key" id="rail-key"></div>
+      </aside>
+      <section class="main">
+        <div class="stats">
+          <div class="panel stat"><div class="stat-label">GPU endpoints</div><div class="stat-value" id="gpu-stat">144</div><div class="stat-detail">across all rails</div></div>
+          <div class="panel stat"><div class="stat-label">Leaf / ToR switches</div><div class="stat-value" id="leaf-stat">8</div><div class="stat-detail" id="leaf-detail">1 per rail</div></div>
+          <div class="panel stat"><div class="stat-label">Spine switches</div><div class="stat-value" id="spine-stat">2</div><div class="stat-detail">sized to port capacity</div></div>
+          <div class="panel stat"><div class="stat-label">Physical links</div><div class="stat-value" id="link-stat">216</div><div class="stat-detail">GPU + fabric links</div></div>
+          <div class="panel stat"><div class="stat-label">Uplink capacity</div><div class="stat-value" id="capacity-stat">57.6 Tb/s</div><div class="stat-detail" id="capacity-detail">57.6 Tb/s down · 57.6 Tb/s up</div></div>
+        </div>
+        <div class="panel diagram-card">
+          <div class="diagram-head"><div><h2 class="panel-title">Cabling topology</h2><p>Each rail view shows all 9 trays and 8 GPUs per rack; the matching GPU index is highlighted.</p></div><div class="diagram-actions"><div class="zoom-control"><button class="action-button" id="fit-button" type="button">Fit</button><input id="zoom" type="range" min="40" max="150" value="100" aria-label="Diagram zoom" /><span class="zoom-value" id="zoom-value">100%</span></div><button class="action-button" id="export-button" type="button">Export CSV</button><div class="badge" id="status">● NON-BLOCKING · 1:1</div></div></div>
+          <div class="diagram-scroll" id="diagram-scroll"><svg id="diagram" role="img" aria-label="Interactive NVL72 GPU rail cabling diagram"></svg></div>
+          <div class="legend"><span><i class="legend-line"></i>GPU to leaf · rail color</span><span><i class="legend-line up"></i>Available leaf to spine uplinks</span><span>Bright tile = GPU index for that rail · 9 trays per rack</span></div>
+        </div>
+        <div class="panel rail-card"><h2>Rail allocation</h2><div class="rail-grid" id="rail-grid"></div></div>
+        <p class="footer">Planning model: all 72 GPUs per rack are represented. Each GPU index has 9 endpoints per rack, one from each compute tray. Spine capacity uses the separate spine interface count.</p>
+      </section>
+    </div>
+  </main>
+<script>
+(() => {
+  const colors = ['#f0a35e','#59c8ef','#b899ff','#f0738f','#70d6a0','#f0d269','#e47dd4','#7c9cff'];
+  const $ = id => document.getElementById(id);
+  const racksInput = $('racks'), portsInput = $('ports'), spinePortsInput = $('spine-ports');
+  const downlinkSpeedInput = $('downlink-speed'), uplinkSpeedInput = $('uplink-speed');
+  const preventOversubInput = $('prevent-oversub');
+  const zoomInput = $('zoom');
+  let diagramWidth = 900, diagramHeight = 800, zoomPercent = 100, lastSchedule = [];
+  $('rail-key').innerHTML = colors.map((c,i)=>`<div class="key-item"><i class="swatch" style="color:${c};background:${c}"></i>Rail ${i}</div>`).join('');
+  const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function applyZoom() {
+    zoomPercent=Number(zoomInput.value)||100;
+    $('zoom-value').textContent=`${zoomPercent}%`;
+    const svg=$('diagram');
+    if(svg) { svg.style.width=`${diagramWidth*zoomPercent/100}px`; svg.style.height=`${diagramHeight*zoomPercent/100}px`; }
+  }
+  function render() {
+    let racks = Math.max(1, Math.min(32, Math.trunc(Number(racksInput.value)||1)));
+    let torPorts = Math.max(4, Math.min(256, Math.trunc(Number(portsInput.value)||4)));
+    let spinePortsPerSwitch = Math.max(4, Math.min(256, Math.trunc(Number(spinePortsInput.value)||4)));
+    let downlinkSpeed = Math.max(25, Math.min(1600, Number(downlinkSpeedInput.value)||25));
+    let uplinkSpeed = Math.max(25, Math.min(1600, Number(uplinkSpeedInput.value)||25));
+    racksInput.value = racks; portsInput.value = torPorts;
+    spinePortsInput.value = spinePortsPerSwitch;
+    downlinkSpeedInput.value = downlinkSpeed; uplinkSpeedInput.value = uplinkSpeed;
+    const endpointsPerRail = racks*9;
+    const baselineLeavesPerRail = Math.ceil(endpointsPerRail/torPorts);
+    const preventOversub = preventOversubInput.checked;
+    const requiredUplinks = down => Math.ceil(down*downlinkSpeed/uplinkSpeed-1e-10);
+    let maxNonblockingDownlinks = 0;
+    for(let down=1;down<=torPorts;down++) if(down+requiredUplinks(down)<=torPorts) maxNonblockingDownlinks=down;
+    const preventImpossible = preventOversub && maxNonblockingDownlinks===0;
+    const downCap = preventOversub && !preventImpossible ? maxNonblockingDownlinks : torPorts;
+    const leavesPerRail = Math.ceil(endpointsPerRail/downCap), leafCount = leavesPerRail*8;
+    const extraToRs = Math.max(0,leafCount-baselineLeavesPerRail*8);
+    const uplinksFor = down => Math.max(0, Math.min(requiredUplinks(down), torPorts-down));
+    const baseDownlinks = Math.floor(endpointsPerRail/leavesPerRail), extraDownlinks = endpointsPerRail%leavesPerRail;
+    const leafDownlinks = Array.from({length:leavesPerRail},(_,i)=>baseDownlinks+(i<extraDownlinks?1:0));
+    const uplinksPerRail = leafDownlinks.reduce((sum,down)=>sum+uplinksFor(down),0);
+    const downlinks = endpointsPerRail*8, totalUplinks = uplinksPerRail*8;
+    const totalDownlinkCapacity = downlinks*downlinkSpeed, totalUplinkCapacity = totalUplinks*uplinkSpeed;
+    const spineCount = Math.max(1,Math.ceil(totalUplinks/spinePortsPerSwitch));
+    const physicalLinks = downlinks+totalUplinks;
+    const leafRatios = leafDownlinks.map(down=>{
+      const capacity=uplinksFor(down)*uplinkSpeed;
+      return capacity===0?Infinity:down*downlinkSpeed/capacity;
+    });
+    const oversubscribed = leafRatios.some(ratio=>ratio>1+1e-9);
+    const worstRatio = Math.max(...leafRatios);
+    const overallRatio = Number.isFinite(worstRatio)?worstRatio.toFixed(2).replace(/\.00$/,''):'∞';
+    $('gpu-stat').textContent = (racks*72).toLocaleString();
+    $('leaf-stat').textContent = leafCount.toLocaleString();
+    $('leaf-detail').textContent = preventImpossible
+      ? `${leavesPerRail} per rail · 1:1 impossible at current ports/speeds`
+      : preventOversub
+      ? `${leavesPerRail} per rail · +${extraToRs} ToRs to prevent oversubscription`
+      : leavesPerRail===1?'1 per rail':`${leavesPerRail} per rail · ${endpointsPerRail} endpoints / rail`;
+    $('spine-stat').textContent = spineCount.toLocaleString();
+    $('spine-stat').nextElementSibling.textContent = `${totalUplinks.toLocaleString()} uplinks · ${spinePortsPerSwitch} ports / spine`;
+    $('link-stat').textContent = physicalLinks.toLocaleString();
+    $('capacity-stat').textContent = `${(totalUplinkCapacity/1000).toFixed(1)} Tb/s`;
+    $('capacity-detail').textContent = `${(totalDownlinkCapacity/1000).toFixed(1)} Tb/s down · ${(totalUplinkCapacity/1000).toFixed(1)} Tb/s up`;
+    const status = $('status');
+    status.classList.toggle('warn',oversubscribed || preventImpossible);
+    status.textContent = preventImpossible ? '⚠ 1:1 IMPOSSIBLE · increase ToR ports or uplink speed'
+      : oversubscribed ? `⚠ OVERSUBSCRIBED · ${overallRatio}:1` : `● NON-BLOCKING · ${overallRatio}:1`;
+
+    // Leave a dedicated rail-label column, then give rack cards enough room for
+    // nine readable tray rows and eight individually visible GPU tiles.
+    const rowH = Math.max(184, 90 + leavesPerRail*64), padTop=48, height=padTop+8*rowH+16;
+    const rackStart=112, rackGap=140, rackWidth=132, leafGap=104, torWidth=88, torHeight=48;
+    const leafX=rackStart+racks*rackGap+30, spineX=leafX+leavesPerRail*leafGap+42, spineGap=92;
+    const width=Math.max(900, spineX+spineCount*spineGap+50);
+    diagramWidth=width; diagramHeight=height;
+    let out=[`<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`,
+      `<defs><filter id="glow"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`,
+      `<text x="28" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.2">RAIL / GPU</text>`,
+      `<text x="${rackStart}" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.2">NVL72 RACKS · TRAYS · GPU INDEX 0–7</text>`,
+      `<text x="${leafX}" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.4">TOP OF RACK · LEAF</text>`,
+      `<text x="${spineX}" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.4">SPINE FABRIC</text>`];
+    // Every rail has its own rack view: all GPUs are visible, with that rail's
+    // matching GPU index highlighted and cabled directly to its assigned leaf.
+    const spinePortUsage=Array(spineCount).fill(0); let globalUplink=0;
+    const scheduleRows=[['Link type','Rail','Source endpoint / switch','Source port','Destination switch / endpoint','Destination port','Speed (Gb/s)']];
+    const endpointAssignments=[];
+    for(let li=0;li<leavesPerRail;li++) for(let local=0;local<leafDownlinks[li];local++) endpointAssignments.push({leafIndex:li,local});
+    for(let rail=0;rail<8;rail++) {
+      const y0=padTop+rail*rowH, color=colors[rail], bandY=y0-12;
+      out.push(`<rect x="18" y="${bandY}" width="${width-36}" height="${rowH-4}" rx="10" fill="${color}" opacity=".035" stroke="${color}" stroke-opacity=".18"/>`);
+      out.push(`<rect x="27" y="${y0+7}" width="4" height="30" rx="2" fill="${color}"/>`);
+      out.push(`<text x="39" y="${y0+20}" fill="${color}" font-size="11" font-weight="700">RAIL ${rail}</text>`);
+      out.push(`<text x="39" y="${y0+34}" fill="#a7b6c1" font-size="9">GPU ${rail}</text>`);
+      for(let r=0;r<racks;r++) {
+        const rx=rackStart+r*rackGap, cardY=y0+31;
+        out.push(`<rect x="${rx}" y="${cardY}" width="${rackWidth}" height="137" rx="7" fill="#121d28" stroke="#405363"/>`);
+        out.push(`<text x="${rx+8}" y="${cardY+13}" fill="#e3edf3" font-size="9" font-weight="700">NVL72 · RACK ${r+1}</text>`);
+        for(let i=0;i<8;i++) {
+          const ix=rx+29+i*12.2;
+          out.push(`<text x="${ix+4.7}" y="${cardY+25}" text-anchor="middle" fill="${i===rail?color:'#788b9a'}" font-size="6.5" font-weight="${i===rail?700:400}">${i}</text>`);
+        }
+        for(let t=0;t<9;t++) {
+          const ty=y0+67+t*11.1;
+          out.push(`<text x="${rx+6}" y="${ty+6.5}" fill="#9babb8" font-size="6.5">Blade ${t}</text>`);
+          for(let i=0;i<8;i++) {
+            const gx=rx+29+i*12.2, selected=i===rail;
+            out.push(`<rect x="${gx}" y="${ty}" width="9.5" height="8" rx="2" fill="${selected?color:'#344350'}" stroke="${selected?'#f3f7fa':'#536575'}" stroke-width="${selected?'.8':'.45'}" opacity="${selected?'.98':'.8'}"><title>Rack ${r+1}, compute tray ${t}, GPU ${i}${selected?` — connects on rail ${rail}`:''}</title></rect>`);
+          }
+        }
+      }
+      for(let r=0;r<racks;r++) for(let t=0;t<9;t++) {
+        const rx=rackStart+r*rackGap, gx=rx+29+rail*12.2, xx=gx+9.5, yy=y0+67+t*11.1+4;
+        const endpointIndex=r*9+t, {leafIndex,local}=endpointAssignments[endpointIndex];
+        const lx=leafX+leafIndex*leafGap, leafY=y0+42+leafIndex*64, n=leafDownlinks[leafIndex];
+        const portY=leafY+7+(local/(n-1||1))*29;
+        out.push(`<path d="M ${xx} ${yy} C ${xx+48} ${yy}, ${lx-42} ${portY}, ${lx} ${portY}" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity=".62"><title>Rack ${r+1}, tray ${t}, GPU ${rail} → Rail ${rail}, ToR ${leafIndex+1}</title></path>`);
+        scheduleRows.push(['GPU to ToR',`Rail ${rail}`,`NVL72 Rack ${r+1} Blade ${t} GPU ${rail}`,`GPU ${rail} rail link`,`ToR ${rail}.${leafIndex+1}`,`Port ${local+1}`,downlinkSpeed]);
+      }
+      for(let li=0;li<leavesPerRail;li++) {
+        const n=leafDownlinks[li], up=uplinksFor(n);
+        const torRatio=up===0?'∞':(n*downlinkSpeed/(up*uplinkSpeed)).toFixed(2).replace(/\.00$/,'');
+        const lx=leafX+li*leafGap, ly=y0+42+li*64;
+        const bandwidthOversubscribed=up*uplinkSpeed < n*downlinkSpeed;
+        out.push(`<rect x="${lx}" y="${ly}" width="${torWidth}" height="${torHeight}" rx="6" fill="${bandwidthOversubscribed?'#302319':'#172532'}" stroke="${bandwidthOversubscribed?'#d28a3f':color}" stroke-opacity=".9"><title>${n} × ${downlinkSpeed} Gb/s downlinks; ${up} × ${uplinkSpeed} Gb/s uplinks</title></rect>`);
+        out.push(`<text x="${lx+7}" y="${ly+13}" fill="#e3edf3" font-size="9" font-weight="700">TOR ${rail}.${li+1}</text>`);
+        out.push(`<text x="${lx+7}" y="${ly+26}" fill="#aebdca" font-size="7.5">${n} down · ${up} up</text>`);
+        out.push(`<text x="${lx+7}" y="${ly+39}" fill="${bandwidthOversubscribed?'#ffd69b':color}" font-size="7.5">${bandwidthOversubscribed?`OVERSUB · ${torRatio}:1`:`${torRatio}:1 · ${torPorts-n-up} spare`}</text>`);
+        // Draw each physical uplink; round-robin across the calculated spine pool.
+        for(let u=0;u<up;u++) {
+          const si=globalUplink%spineCount, spinePort=spinePortUsage[si]+1, torPort=n+u+1;
+          const sx=spineX+si*spineGap, sy=ly+8+(u%8)*3.8;
+          const targetY=padTop+27+(si*(height-padTop-52)/(spineCount-1||1));
+          out.push(`<path d="M ${lx+torWidth} ${sy} C ${lx+torWidth+48} ${sy}, ${sx-42} ${targetY}, ${sx} ${targetY}" fill="none" stroke="${color}" stroke-width=".7" stroke-opacity=".22"><title>Rail ${rail} ToR ${li+1} uplink ${u+1} → Spine ${si+1}</title></path>`);
+          scheduleRows.push(['ToR to Spine',`Rail ${rail}`,`ToR ${rail}.${li+1}`,`Port ${torPort}`,`Spine ${si+1}`,`Port ${spinePort}`,uplinkSpeed]);
+          spinePortUsage[si]++; globalUplink++;
+        }
+      }
+    }
+    for(let si=0;si<spineCount;si++) {
+      const sx=spineX+si*spineGap, sy=padTop+27+(si*(height-padTop-52)/(spineCount-1||1));
+      out.push(`<rect x="${sx}" y="${sy-15}" width="68" height="30" rx="6" fill="#1a2733" stroke="#64798b"/>`);
+      out.push(`<text x="${sx+34}" y="${sy-2}" text-anchor="middle" fill="#e4edf3" font-size="8" font-weight="700">SPINE ${si+1}</text>`);
+      out.push(`<text x="${sx+34}" y="${sy+8}" text-anchor="middle" fill="#9bacb9" font-size="7">${spinePortUsage[si]} / ${spinePortsPerSwitch} ports</text>`);
+    }
+    out.push('</svg>');
+    // Outer SVG identity is retained; replace its contents and sizing.
+    const svg=$('diagram'); svg.outerHTML=out.join('');
+    lastSchedule=scheduleRows;
+    applyZoom();
+    $('rail-grid').innerHTML=colors.map((c,i)=>`<div class="rail-row"><div class="rail-name"><i class="swatch" style="color:${c};background:${c}"></i>Rail ${i}</div><div class="rail-meta">${endpointsPerRail} GPU links<br>${leavesPerRail} ToR · ${uplinksPerRail} uplinks</div></div>`).join('');
+  }
+  [racksInput,portsInput,spinePortsInput,downlinkSpeedInput,uplinkSpeedInput].forEach(el=>el.addEventListener('input',render));
+  preventOversubInput.addEventListener('change',render);
+  zoomInput.addEventListener('input',applyZoom);
+  $('fit-button').addEventListener('click',()=>{
+    const available=$('diagram-scroll').clientWidth-24;
+    zoomInput.value=Math.max(40,Math.min(150,Math.floor(available/diagramWidth*100)));
+    applyZoom();
+  });
+  $('export-button').addEventListener('click',()=>{
+    const cell=value=>`"${String(value).replace(/"/g,'""')}"`;
+    const csv=lastSchedule.map(row=>row.map(cell).join(',')).join('\r\n');
+    const blob=new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob), link=document.createElement('a');
+    link.href=url; link.download=`nvl72-cabling-racks-${racksInput.value}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+  });
+  render();
+})();
+</script>
+</body>
+</html>
