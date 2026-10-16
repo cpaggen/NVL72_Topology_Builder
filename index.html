@@ -59,6 +59,7 @@
     .empty strong { display:block; font-size:14px; color:#dce6ed; margin-bottom:6px }
     .legend { display:flex; flex-wrap:wrap; align-items:center; gap:15px; padding:12px 20px; border-top:1px solid #283746; color:#9aacba; font-size:10px }
     .legend-line { display:inline-block; width:18px; height:2px; background:#b2c1cd; vertical-align:middle; margin-right:6px }
+    .legend-line.plane-b { background:repeating-linear-gradient(90deg,#b2c1cd 0 4px,transparent 4px 7px) }
     .legend-line.up { background:#c4d4e0; opacity:.58; height:1px }
     .rail-card { padding:17px 20px; margin-top:14px }
     .rail-card h2 { margin:0 0 13px; font-size:14px }
@@ -75,42 +76,43 @@
 <body>
   <main class="shell">
     <header>
-      <div><div class="eyebrow">Fabric design tool</div><h1>NVL72 Rail Planner</h1><p class="intro">Explore a GPU rail cabling layout across NVL72 racks. GPU downlinks are mapped to their matching rail, and ToR uplink capacity determines whether the fabric is non-blocking or oversubscribed.</p></div>
-      <div class="mark">NVL72 · 9 trays · 72 GPUs / rack</div>
+      <div><div class="eyebrow">Fabric design tool</div><h1>NVL72 Rail Planner</h1><p class="intro">Explore a dual-plane GPU rail cabling layout across NVL72 racks. Four GPU positions map to four rails in each independent plane; ToR uplink capacity determines whether each plane is non-blocking or oversubscribed.</p></div>
+      <div class="mark">NVL72 · 18 compute trays · 72 GPUs / rack</div>
     </header>
     <div class="layout">
       <aside class="panel controls">
         <h2 class="panel-title">Fabric inputs</h2><p class="sub">Change the scale and switch port budget.</p>
-        <label for="racks">NVL72 racks</label><div class="field"><input id="racks" type="number" min="1" max="32" value="2" /><span class="suffix">racks</span></div><p class="hint">Each rack contains 9 compute trays.</p>
+        <label for="racks">NVL72 racks</label><div class="field"><input id="racks" type="number" min="1" max="32" value="2" /><span class="suffix">racks</span></div><p class="hint">Each rack contains 18 compute trays with 4 GPUs per tray.</p>
         <label for="ports">Interfaces per ToR switch</label><div class="field"><input id="ports" type="number" min="4" max="256" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">GPU downlinks are assigned first; remaining ports serve spine uplinks.</p>
         <label for="spine-ports">Interfaces per spine switch</label><div class="field"><input id="spine-ports" type="number" min="4" max="256" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">Spine count is sized to the total ToR uplink demand.</p>
-        <label for="downlink-speed">GPU downlink speed</label><div class="field"><input id="downlink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div>
-        <label for="uplink-speed">ToR-to-spine uplink speed</label><div class="field"><input id="uplink-speed" type="number" min="25" max="1600" step="25" value="800" /><span class="suffix">Gb/s</span></div><p class="hint">Uplink ports are sized by bandwidth. For example, 2 × 400G downlinks need 1 × 800G uplink.</p>
+        <label for="downlink-speed">GPU-to-plane link speed</label><div class="field"><input id="downlink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint">Each GPU has one 400G link to each independent plane in this reference design.</p>
+        <label for="uplink-speed">ToR-to-spine uplink speed</label><div class="field"><input id="uplink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint">Uplink ports are sized by bandwidth. For example, 2 × 400G downlinks need 1 × 800G uplink.</p>
         <label class="toggle-row" for="prevent-oversub"><input id="prevent-oversub" type="checkbox" /><span class="toggle-copy">Prevent oversubscription<small>Ensure each ToR has at least 1:1 uplink bandwidth</small></span></label>
-        <div class="assumption"><strong>Rail mapping</strong><br>GPU index 0–7 maps to rail 0–7. Each tray contributes one GPU to every rail. ToR ratios compare GPU downlink bandwidth with ToR-to-spine uplink bandwidth.</div>
+        <div class="assumption"><strong>NVL72 compute-fabric model</strong><br>18 compute trays × 4 GPUs per tray = 72 GPUs per rack. There are 4 GPU-position rails in each of 2 independent planes. Each GPU connects to both planes at 400G per plane. Leaf switches are sized from the port and bandwidth inputs; a rail is not assumed to equal one switch.<br><br><strong>Switch-count scope</strong><br>Counts are generic capacity estimates from your inputs, not an exact NVIDIA Enterprise RA bill of materials or rack-pair layout.</div>
         <div class="rail-key" id="rail-key"></div>
       </aside>
       <section class="main">
         <div class="stats">
           <div class="panel stat"><div class="stat-label">GPU endpoints</div><div class="stat-value" id="gpu-stat">144</div><div class="stat-detail">across all rails</div></div>
-          <div class="panel stat"><div class="stat-label">Leaf / ToR switches</div><div class="stat-value" id="leaf-stat">8</div><div class="stat-detail" id="leaf-detail">1 per rail</div></div>
+          <div class="panel stat"><div class="stat-label">Leaf / ToR switches</div><div class="stat-value" id="leaf-stat">8</div><div class="stat-detail" id="leaf-detail">across both planes</div></div>
           <div class="panel stat"><div class="stat-label">Spine switches</div><div class="stat-value" id="spine-stat">2</div><div class="stat-detail">sized to port capacity</div></div>
           <div class="panel stat"><div class="stat-label">Physical links</div><div class="stat-value" id="link-stat">216</div><div class="stat-detail">GPU + fabric links</div></div>
           <div class="panel stat"><div class="stat-label">Uplink capacity</div><div class="stat-value" id="capacity-stat">57.6 Tb/s</div><div class="stat-detail" id="capacity-detail">57.6 Tb/s down · 57.6 Tb/s up</div></div>
         </div>
         <div class="panel diagram-card">
-          <div class="diagram-head"><div><h2 class="panel-title">Cabling topology</h2><p>Each rail view shows all 9 trays and 8 GPUs per rack; the matching GPU index is highlighted.</p></div><div class="diagram-actions"><div class="zoom-control"><button class="action-button" id="fit-button" type="button">Fit</button><input id="zoom" type="range" min="40" max="150" value="100" aria-label="Diagram zoom" /><span class="zoom-value" id="zoom-value">100%</span></div><button class="action-button" id="export-button" type="button">Export CSV</button><div class="badge" id="status">● NON-BLOCKING · 1:1</div></div></div>
+          <div class="diagram-head"><div><h2 class="panel-title">Cabling topology</h2><p>Each rack is shown once. Every GPU has two visible cables, one to each independent plane.</p></div><div class="diagram-actions"><div class="zoom-control"><button class="action-button" id="fit-button" type="button">Fit</button><input id="zoom" type="range" min="40" max="150" value="100" aria-label="Diagram zoom" /><span class="zoom-value" id="zoom-value">100%</span></div><button class="action-button" id="export-button" type="button">Export CSV</button><div class="badge" id="status">● NON-BLOCKING · 1:1</div></div></div>
           <div class="diagram-scroll" id="diagram-scroll"><svg id="diagram" role="img" aria-label="Interactive NVL72 GPU rail cabling diagram"></svg></div>
-          <div class="legend"><span><i class="legend-line"></i>GPU to leaf · rail color</span><span><i class="legend-line up"></i>Available leaf to spine uplinks</span><span>Bright tile = GPU index for that rail · 9 trays per rack</span></div>
+          <div class="legend"><span><i class="legend-line"></i>Plane A cable · solid</span><span><i class="legend-line plane-b"></i>Plane B cable · dashed</span><span><i class="swatch" style="color:#f0a35e;background:#f0a35e"></i> Cable color identifies GPU rail</span><span><i class="legend-line up"></i>Leaf to spine uplinks</span></div>
         </div>
-        <div class="panel rail-card"><h2>Rail allocation</h2><div class="rail-grid" id="rail-grid"></div></div>
-        <p class="footer">Planning model: all 72 GPUs per rack are represented. Each GPU index has 9 endpoints per rack, one from each compute tray. Spine capacity uses the separate spine interface count.</p>
+        <div class="panel rail-card"><h2>Plane and rail allocation</h2><div class="rail-grid" id="rail-grid"></div></div>
+        <p class="footer">Planning model: each rack has 18 compute trays and 72 GPUs. Every GPU has one 400G downlink in each of two separate compute planes. Spine capacity uses the separate spine interface count. NVIDIA RA examples use topology-specific switch layouts; this planner estimates counts from the interface and speed settings above.</p>
       </section>
     </div>
   </main>
 <script>
 (() => {
-  const colors = ['#f0a35e','#59c8ef','#b899ff','#f0738f','#70d6a0','#f0d269','#e47dd4','#7c9cff'];
+  const TRAYS_PER_RACK = 18, GPUS_PER_TRAY = 4, PLANES = 2;
+  const colors = ['#f0a35e','#59c8ef','#b899ff','#f0738f'];
   const $ = id => document.getElementById(id);
   const racksInput = $('racks'), portsInput = $('ports'), spinePortsInput = $('spine-ports');
   const downlinkSpeedInput = $('downlink-speed'), uplinkSpeedInput = $('uplink-speed');
@@ -134,7 +136,7 @@
     racksInput.value = racks; portsInput.value = torPorts;
     spinePortsInput.value = spinePortsPerSwitch;
     downlinkSpeedInput.value = downlinkSpeed; uplinkSpeedInput.value = uplinkSpeed;
-    const endpointsPerRail = racks*9;
+    const endpointsPerRail = racks*TRAYS_PER_RACK;
     const baselineLeavesPerRail = Math.ceil(endpointsPerRail/torPorts);
     const preventOversub = preventOversubInput.checked;
     const requiredUplinks = down => Math.ceil(down*downlinkSpeed/uplinkSpeed-1e-10);
@@ -142,15 +144,17 @@
     for(let down=1;down<=torPorts;down++) if(down+requiredUplinks(down)<=torPorts) maxNonblockingDownlinks=down;
     const preventImpossible = preventOversub && maxNonblockingDownlinks===0;
     const downCap = preventOversub && !preventImpossible ? maxNonblockingDownlinks : torPorts;
-    const leavesPerRail = Math.ceil(endpointsPerRail/downCap), leafCount = leavesPerRail*8;
-    const extraToRs = Math.max(0,leafCount-baselineLeavesPerRail*8);
+    const railPlaneCount = GPUS_PER_TRAY*PLANES;
+    const leavesPerRail = Math.ceil(endpointsPerRail/downCap), leafCount = leavesPerRail*railPlaneCount;
+    const extraToRs = Math.max(0,leafCount-baselineLeavesPerRail*railPlaneCount);
     const uplinksFor = down => Math.max(0, Math.min(requiredUplinks(down), torPorts-down));
     const baseDownlinks = Math.floor(endpointsPerRail/leavesPerRail), extraDownlinks = endpointsPerRail%leavesPerRail;
     const leafDownlinks = Array.from({length:leavesPerRail},(_,i)=>baseDownlinks+(i<extraDownlinks?1:0));
     const uplinksPerRail = leafDownlinks.reduce((sum,down)=>sum+uplinksFor(down),0);
-    const downlinks = endpointsPerRail*8, totalUplinks = uplinksPerRail*8;
+    const downlinks = endpointsPerRail*railPlaneCount, totalUplinks = uplinksPerRail*railPlaneCount;
     const totalDownlinkCapacity = downlinks*downlinkSpeed, totalUplinkCapacity = totalUplinks*uplinkSpeed;
-    const spineCount = Math.max(1,Math.ceil(totalUplinks/spinePortsPerSwitch));
+    const spineCountPerPlane = Math.max(1,Math.ceil(uplinksPerRail*GPUS_PER_TRAY/spinePortsPerSwitch));
+    const spineCount = spineCountPerPlane*PLANES;
     const physicalLinks = downlinks+totalUplinks;
     const leafRatios = leafDownlinks.map(down=>{
       const capacity=uplinksFor(down)*uplinkSpeed;
@@ -159,15 +163,15 @@
     const oversubscribed = leafRatios.some(ratio=>ratio>1+1e-9);
     const worstRatio = Math.max(...leafRatios);
     const overallRatio = Number.isFinite(worstRatio)?worstRatio.toFixed(2).replace(/\.00$/,''):'∞';
-    $('gpu-stat').textContent = (racks*72).toLocaleString();
+    $('gpu-stat').textContent = (racks*TRAYS_PER_RACK*GPUS_PER_TRAY).toLocaleString();
     $('leaf-stat').textContent = leafCount.toLocaleString();
     $('leaf-detail').textContent = preventImpossible
-      ? `${leavesPerRail} per rail · 1:1 impossible at current ports/speeds`
+      ? `${leavesPerRail} per rail-plane · 1:1 impossible at current ports/speeds`
       : preventOversub
-      ? `${leavesPerRail} per rail · +${extraToRs} ToRs to prevent oversubscription`
-      : leavesPerRail===1?'1 per rail':`${leavesPerRail} per rail · ${endpointsPerRail} endpoints / rail`;
+      ? `${leavesPerRail} per rail-plane · +${extraToRs} ToRs to prevent oversubscription`
+      : leavesPerRail===1?'1 per rail-plane':`${leavesPerRail} per rail-plane · ${endpointsPerRail} endpoints / rail`;
     $('spine-stat').textContent = spineCount.toLocaleString();
-    $('spine-stat').nextElementSibling.textContent = `${totalUplinks.toLocaleString()} uplinks · ${spinePortsPerSwitch} ports / spine`;
+    $('spine-stat').nextElementSibling.textContent = `${spineCountPerPlane} per plane · ${spinePortsPerSwitch} ports / spine`;
     $('link-stat').textContent = physicalLinks.toLocaleString();
     $('capacity-stat').textContent = `${(totalUplinkCapacity/1000).toFixed(1)} Tb/s`;
     $('capacity-detail').textContent = `${(totalDownlinkCapacity/1000).toFixed(1)} Tb/s down · ${(totalUplinkCapacity/1000).toFixed(1)} Tb/s up`;
@@ -176,88 +180,99 @@
     status.textContent = preventImpossible ? '⚠ 1:1 IMPOSSIBLE · increase ToR ports or uplink speed'
       : oversubscribed ? `⚠ OVERSUBSCRIBED · ${overallRatio}:1` : `● NON-BLOCKING · ${overallRatio}:1`;
 
-    // Leave a dedicated rail-label column, then give rack cards enough room for
-    // nine readable tray rows and eight individually visible GPU tiles.
-    const rowH = Math.max(184, 90 + leavesPerRail*64), padTop=48, height=padTop+8*rowH+16;
-    const rackStart=112, rackGap=140, rackWidth=132, leafGap=104, torWidth=88, torHeight=48;
-    const leafX=rackStart+racks*rackGap+30, spineX=leafX+leavesPerRail*leafGap+42, spineGap=92;
-    const width=Math.max(900, spineX+spineCount*spineGap+50);
+    // Draw each rack once, then route two cables from every GPU position to
+    // the matching rail's leaf switches in the independent A and B planes.
+    const padTop=58, rackStart=38, rackWidth=240, rackY=66, trayRowH=48;
+    const rackHeight=38+TRAYS_PER_RACK*trayRowH+8, rackStep=rackHeight+26;
+    const groupPitch=leavesPerRail*64+30, torX=rackStart+rackWidth+110;
+    const torWidth=148, torHeight=48, spineX=torX+torWidth+100, spineWidth=112;
+    const height=Math.max(rackY+(racks-1)*rackStep+rackHeight+28,padTop+railPlaneCount*groupPitch+24,padTop+spineCount*52+32);
+    const width=Math.max(900,spineX+spineWidth+44);
     diagramWidth=width; diagramHeight=height;
     let out=[`<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`,
-      `<defs><filter id="glow"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`,
-      `<text x="28" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.2">RAIL / GPU</text>`,
-      `<text x="${rackStart}" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.2">NVL72 RACKS · TRAYS · GPU INDEX 0–7</text>`,
-      `<text x="${leafX}" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.4">TOP OF RACK · LEAF</text>`,
-      `<text x="${spineX}" y="25" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.4">SPINE FABRIC</text>`];
-    // Every rail has its own rack view: all GPUs are visible, with that rail's
-    // matching GPU index highlighted and cabled directly to its assigned leaf.
-    const spinePortUsage=Array(spineCount).fill(0); let globalUplink=0;
-    const scheduleRows=[['Link type','Rail','Source endpoint / switch','Source port','Destination switch / endpoint','Destination port','Speed (Gb/s)']];
+      `<text x="${rackStart}" y="28" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.2">NVL72 RACKS · 18 COMPUTE TRAYS · 4 GPUs / TRAY</text>`,
+      `<text x="${torX}" y="28" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.1">LEAF SWITCHES · PLANE / RAIL GROUPS</text>`,
+      `<text x="${spineX}" y="28" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.4">SPINE FABRICS</text>`];
+    for(let group=0;group<railPlaneCount;group++) {
+      const plane=Math.floor(group/GPUS_PER_TRAY), rail=group%GPUS_PER_TRAY, groupTop=padTop+group*groupPitch;
+      out.push(`<rect x="${torX-10}" y="${groupTop-8}" width="${spineX+spineWidth-torX+20}" height="${groupPitch-3}" rx="8" fill="${colors[rail]}" opacity=".035" stroke="${colors[rail]}" stroke-opacity=".18"/>`);
+      out.push(`<text x="${torX}" y="${groupTop}" fill="${colors[rail]}" font-size="9" font-weight="700">PLANE ${plane===0?'A':'B'} · RAIL ${rail}</text>`);
+    }
+
+    const spinePortUsage=Array(spineCount).fill(0), planeUplinkCount=Array(PLANES).fill(0);
+    const scheduleRows=[['Link type','Plane / rail','Source endpoint / switch','Source port','Destination switch / endpoint','Destination port','Speed (Gb/s)']];
     const endpointAssignments=[];
     for(let li=0;li<leavesPerRail;li++) for(let local=0;local<leafDownlinks[li];local++) endpointAssignments.push({leafIndex:li,local});
-    for(let rail=0;rail<8;rail++) {
-      const y0=padTop+rail*rowH, color=colors[rail], bandY=y0-12;
-      out.push(`<rect x="18" y="${bandY}" width="${width-36}" height="${rowH-4}" rx="10" fill="${color}" opacity=".035" stroke="${color}" stroke-opacity=".18"/>`);
-      out.push(`<rect x="27" y="${y0+7}" width="4" height="30" rx="2" fill="${color}"/>`);
-      out.push(`<text x="39" y="${y0+20}" fill="${color}" font-size="11" font-weight="700">RAIL ${rail}</text>`);
-      out.push(`<text x="39" y="${y0+34}" fill="#a7b6c1" font-size="9">GPU ${rail}</text>`);
-      for(let r=0;r<racks;r++) {
-        const rx=rackStart+r*rackGap, cardY=y0+31;
-        out.push(`<rect x="${rx}" y="${cardY}" width="${rackWidth}" height="137" rx="7" fill="#121d28" stroke="#405363"/>`);
-        out.push(`<text x="${rx+8}" y="${cardY+13}" fill="#e3edf3" font-size="9" font-weight="700">NVL72 · RACK ${r+1}</text>`);
-        for(let i=0;i<8;i++) {
-          const ix=rx+29+i*12.2;
-          out.push(`<text x="${ix+4.7}" y="${cardY+25}" text-anchor="middle" fill="${i===rail?color:'#788b9a'}" font-size="6.5" font-weight="${i===rail?700:400}">${i}</text>`);
-        }
-        for(let t=0;t<9;t++) {
-          const ty=y0+67+t*11.1;
-          out.push(`<text x="${rx+6}" y="${ty+6.5}" fill="#9babb8" font-size="6.5">Blade ${t}</text>`);
-          for(let i=0;i<8;i++) {
-            const gx=rx+29+i*12.2, selected=i===rail;
-            out.push(`<rect x="${gx}" y="${ty}" width="9.5" height="8" rx="2" fill="${selected?color:'#344350'}" stroke="${selected?'#f3f7fa':'#536575'}" stroke-width="${selected?'.8':'.45'}" opacity="${selected?'.98':'.8'}"><title>Rack ${r+1}, compute tray ${t}, GPU ${i}${selected?` — connects on rail ${rail}`:''}</title></rect>`);
-          }
+
+    // Rack chassis and all GPUs appear exactly once. Each GPU tile uses its
+    // rail color; cable style distinguishes the two plane connections.
+    for(let r=0;r<racks;r++) {
+      const rx=rackStart, rackTop=rackY+r*rackStep;
+      out.push(`<rect x="${rx}" y="${rackTop}" width="${rackWidth}" height="${rackHeight}" rx="9" fill="#121d28" stroke="#405363"/>`);
+      out.push(`<text x="${rx+10}" y="${rackTop+17}" fill="#e3edf3" font-size="10" font-weight="700">NVL72 · RACK ${r+1} · 18 COMPUTE TRAYS</text>`);
+      for(let t=0;t<TRAYS_PER_RACK;t++) {
+        const ty=rackTop+31+t*trayRowH;
+        out.push(`<rect x="${rx+6}" y="${ty}" width="${rackWidth-12}" height="${trayRowH-2}" rx="4" fill="${t%2?'#15222e':'#182633'}" stroke="#293b4a" stroke-width=".7"/>`);
+        out.push(`<text x="${rx+12}" y="${ty+23}" fill="#aebdca" font-size="8" font-weight="650">TRAY ${t}</text>`);
+        for(let i=0;i<GPUS_PER_TRAY;i++) {
+          const gx=rx+72, gy=ty+2+i*11, color=colors[i];
+          out.push(`<rect x="${gx}" y="${gy}" width="156" height="10.5" rx="3" fill="${color}" fill-opacity=".82" stroke="#e6edf2" stroke-opacity=".58" stroke-width=".55"><title>Rack ${r+1}, compute tray ${t}, GPU ${i}: one cable to each plane on rail ${i}</title></rect>`);
+          out.push(`<text x="${gx+7}" y="${gy+7.8}" fill="#0b1018" font-size="7.5" font-weight="800">GPU ${i}</text>`);
         }
       }
-      for(let r=0;r<racks;r++) for(let t=0;t<9;t++) {
-        const rx=rackStart+r*rackGap, gx=rx+29+rail*12.2, xx=gx+9.5, yy=y0+67+t*11.1+4;
-        const endpointIndex=r*9+t, {leafIndex,local}=endpointAssignments[endpointIndex];
-        const lx=leafX+leafIndex*leafGap, leafY=y0+42+leafIndex*64, n=leafDownlinks[leafIndex];
-        const portY=leafY+7+(local/(n-1||1))*29;
-        out.push(`<path d="M ${xx} ${yy} C ${xx+48} ${yy}, ${lx-42} ${portY}, ${lx} ${portY}" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity=".62"><title>Rack ${r+1}, tray ${t}, GPU ${rail} → Rail ${rail}, ToR ${leafIndex+1}</title></path>`);
-        scheduleRows.push(['GPU to ToR',`Rail ${rail}`,`NVL72 Rack ${r+1} Blade ${t} GPU ${rail}`,`GPU ${rail} rail link`,`ToR ${rail}.${leafIndex+1}`,`Port ${local+1}`,downlinkSpeed]);
+    }
+
+    // Render both plane paths for every GPU, using solid for A and dashed for B.
+    const torElements=[];
+    for(let plane=0;plane<PLANES;plane++) for(let rail=0;rail<GPUS_PER_TRAY;rail++) {
+      const group=plane*GPUS_PER_TRAY+rail, color=colors[rail], lx=torX;
+      const groupTop=padTop+group*groupPitch;
+      for(let r=0;r<racks;r++) for(let t=0;t<TRAYS_PER_RACK;t++) {
+        const rx=rackStart, rackTop=rackY+r*rackStep, gx=rx+72+156;
+        const tileY=rackTop+31+t*trayRowH+2+rail*11;
+        const endpointIndex=r*TRAYS_PER_RACK+t, {leafIndex,local}=endpointAssignments[endpointIndex];
+        const ly=groupTop+10+leafIndex*64, n=leafDownlinks[leafIndex];
+        const portY=ly+7+(local/(n-1||1))*29;
+        const dash=plane===1?' stroke-dasharray="4 3"':'';
+        const startY=tileY+(plane===0?2.1:6.1), startX=gx;
+        out.push(`<path d="M ${startX} ${startY} C ${startX+30} ${startY}, ${lx-36} ${portY}, ${lx} ${portY}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity="${plane===0?'.78':'.65'}"${dash}><title>Rack ${r+1}, tray ${t}, GPU ${rail} → Plane ${plane===0?'A':'B'}, Rail ${rail}, ToR ${leafIndex+1}</title></path>`);
+        scheduleRows.push(['GPU to ToR',`Plane ${plane===0?'A':'B'} · Rail ${rail}`,`NVL72 Rack ${r+1} Tray ${t} GPU ${rail}`,`GPU ${rail} plane link`,`ToR P${plane+1}.R${rail}.${leafIndex+1}`,`Port ${local+1}`,downlinkSpeed]);
       }
       for(let li=0;li<leavesPerRail;li++) {
         const n=leafDownlinks[li], up=uplinksFor(n);
         const torRatio=up===0?'∞':(n*downlinkSpeed/(up*uplinkSpeed)).toFixed(2).replace(/\.00$/,'');
-        const lx=leafX+li*leafGap, ly=y0+42+li*64;
-        const bandwidthOversubscribed=up*uplinkSpeed < n*downlinkSpeed;
-        out.push(`<rect x="${lx}" y="${ly}" width="${torWidth}" height="${torHeight}" rx="6" fill="${bandwidthOversubscribed?'#302319':'#172532'}" stroke="${bandwidthOversubscribed?'#d28a3f':color}" stroke-opacity=".9"><title>${n} × ${downlinkSpeed} Gb/s downlinks; ${up} × ${uplinkSpeed} Gb/s uplinks</title></rect>`);
-        out.push(`<text x="${lx+7}" y="${ly+13}" fill="#e3edf3" font-size="9" font-weight="700">TOR ${rail}.${li+1}</text>`);
-        out.push(`<text x="${lx+7}" y="${ly+26}" fill="#aebdca" font-size="7.5">${n} down · ${up} up</text>`);
-        out.push(`<text x="${lx+7}" y="${ly+39}" fill="${bandwidthOversubscribed?'#ffd69b':color}" font-size="7.5">${bandwidthOversubscribed?`OVERSUB · ${torRatio}:1`:`${torRatio}:1 · ${torPorts-n-up} spare`}</text>`);
-        // Draw each physical uplink; round-robin across the calculated spine pool.
+        const ly=groupTop+10+li*64, bandwidthOversubscribed=up*uplinkSpeed<n*downlinkSpeed;
+        torElements.push(`<rect x="${lx}" y="${ly}" width="${torWidth}" height="${torHeight}" rx="6" fill="${bandwidthOversubscribed?'#302319':'#172532'}" stroke="${bandwidthOversubscribed?'#d28a3f':color}" stroke-opacity=".9"><title>${n} × ${downlinkSpeed} Gb/s downlinks; ${up} × ${uplinkSpeed} Gb/s uplinks</title></rect>`);
+        torElements.push(`<text x="${lx+7}" y="${ly+13}" fill="#e3edf3" font-size="8.5" font-weight="700">TOR P${plane+1}.R${rail}.${li+1}</text>`);
+        torElements.push(`<text x="${lx+7}" y="${ly+26}" fill="#aebdca" font-size="7.5">${n} down · ${up} up</text>`);
+        torElements.push(`<text x="${lx+7}" y="${ly+39}" fill="${bandwidthOversubscribed?'#ffd69b':color}" font-size="7.5">${bandwidthOversubscribed?`OVERSUB · ${torRatio}:1`:`${torRatio}:1 · ${torPorts-n-up} spare`}</text>`);
         for(let u=0;u<up;u++) {
-          const si=globalUplink%spineCount, spinePort=spinePortUsage[si]+1, torPort=n+u+1;
-          const sx=spineX+si*spineGap, sy=ly+8+(u%8)*3.8;
-          const targetY=padTop+27+(si*(height-padTop-52)/(spineCount-1||1));
-          out.push(`<path d="M ${lx+torWidth} ${sy} C ${lx+torWidth+48} ${sy}, ${sx-42} ${targetY}, ${sx} ${targetY}" fill="none" stroke="${color}" stroke-width=".7" stroke-opacity=".22"><title>Rail ${rail} ToR ${li+1} uplink ${u+1} → Spine ${si+1}</title></path>`);
-          scheduleRows.push(['ToR to Spine',`Rail ${rail}`,`ToR ${rail}.${li+1}`,`Port ${torPort}`,`Spine ${si+1}`,`Port ${spinePort}`,uplinkSpeed]);
-          spinePortUsage[si]++; globalUplink++;
+          const si=plane*spineCountPerPlane+(planeUplinkCount[plane]%spineCountPerPlane);
+          const spinePort=spinePortUsage[si]+1, torPort=n+u+1;
+          const sx=spineX, sy=ly+8+(u%8)*3.8;
+          const targetY=padTop+26+si*52;
+          out.push(`<path d="M ${lx+torWidth} ${sy} C ${lx+torWidth+35} ${sy}, ${sx-30} ${targetY}, ${sx} ${targetY}" fill="none" stroke="${color}" stroke-width=".8" stroke-opacity=".26"><title>Plane ${plane===0?'A':'B'} Rail ${rail} ToR ${li+1} uplink ${u+1} → Spine ${si+1}</title></path>`);
+          scheduleRows.push(['ToR to Spine',`Plane ${plane===0?'A':'B'} · Rail ${rail}`,`ToR P${plane+1}.R${rail}.${li+1}`,`Port ${torPort}`,`Spine P${plane+1}.${si%spineCountPerPlane+1}`,`Port ${spinePort}`,uplinkSpeed]);
+          spinePortUsage[si]++; planeUplinkCount[plane]++;
         }
       }
     }
+    out.push(...torElements);
     for(let si=0;si<spineCount;si++) {
-      const sx=spineX+si*spineGap, sy=padTop+27+(si*(height-padTop-52)/(spineCount-1||1));
-      out.push(`<rect x="${sx}" y="${sy-15}" width="68" height="30" rx="6" fill="#1a2733" stroke="#64798b"/>`);
-      out.push(`<text x="${sx+34}" y="${sy-2}" text-anchor="middle" fill="#e4edf3" font-size="8" font-weight="700">SPINE ${si+1}</text>`);
-      out.push(`<text x="${sx+34}" y="${sy+8}" text-anchor="middle" fill="#9bacb9" font-size="7">${spinePortUsage[si]} / ${spinePortsPerSwitch} ports</text>`);
+      const sx=spineX, sy=padTop+26+si*52;
+      out.push(`<rect x="${sx}" y="${sy-15}" width="${spineWidth}" height="30" rx="6" fill="#1a2733" stroke="#64798b"/>`);
+      out.push(`<text x="${sx+spineWidth/2}" y="${sy-2}" text-anchor="middle" fill="#e4edf3" font-size="8" font-weight="700">P${Math.floor(si/spineCountPerPlane)+1} SPINE ${si%spineCountPerPlane+1}</text>`);
+      out.push(`<text x="${sx+spineWidth/2}" y="${sy+8}" text-anchor="middle" fill="#9bacb9" font-size="7">${spinePortUsage[si]} / ${spinePortsPerSwitch} ports</text>`);
     }
     out.push('</svg>');
     // Outer SVG identity is retained; replace its contents and sizing.
     const svg=$('diagram'); svg.outerHTML=out.join('');
     lastSchedule=scheduleRows;
     applyZoom();
-    $('rail-grid').innerHTML=colors.map((c,i)=>`<div class="rail-row"><div class="rail-name"><i class="swatch" style="color:${c};background:${c}"></i>Rail ${i}</div><div class="rail-meta">${endpointsPerRail} GPU links<br>${leavesPerRail} ToR · ${uplinksPerRail} uplinks</div></div>`).join('');
+    $('rail-grid').innerHTML=Array.from({length:railPlaneCount},(_,group)=>{
+      const plane=Math.floor(group/GPUS_PER_TRAY), rail=group%GPUS_PER_TRAY, c=colors[rail];
+      return `<div class="rail-row"><div class="rail-name"><i class="swatch" style="color:${c};background:${c}"></i>Plane ${plane===0?'A':'B'} · Rail ${rail}</div><div class="rail-meta">${endpointsPerRail} GPU links<br>${leavesPerRail} leaf · ${uplinksPerRail} uplinks</div></div>`;
+    }).join('');
   }
   [racksInput,portsInput,spinePortsInput,downlinkSpeedInput,uplinkSpeedInput].forEach(el=>el.addEventListener('input',render));
   preventOversubInput.addEventListener('change',render);
