@@ -80,28 +80,22 @@
 <body>
   <main class="shell">
     <header>
-      <div><div class="eyebrow">Fabric design tool</div><h1>NVL72 Rail Planner</h1><p class="intro">Explore a dual-plane GPU rail cabling layout across NVL72 racks. Four GPU positions map to four rails in each independent plane; ToR uplink capacity determines whether each plane is non-blocking or oversubscribed.</p></div>
-      <div class="mark">NVL72 · 18 compute trays · 72 GPUs / rack</div>
+      <div><div class="eyebrow">Fabric design tool</div><h1>NVL72 Rail Planner</h1><p class="intro" id="intro">Explore the GPU rail fabric for the selected NVL72 generation. Rail colors identify GPU positions; plane line styles show redundant paths.</p></div>
+      <div class="mark" id="system-mark">GB300 · 18 compute trays · 72 GPUs / rack</div>
     </header>
     <div class="layout">
       <aside class="panel controls">
-        <h2 class="panel-title">Fabric inputs</h2><p class="sub">Choose the ToR model and fabric scale.</p>
+        <h2 class="panel-title">Fabric inputs</h2><p class="sub">Choose the NVL generation, topology, and switch capacity.</p>
+        <label for="nvl-model">NVL system</label><select id="nvl-model"><option value="gb300" selected>GB300 NVL72 · dual plane</option><option value="vera">Vera Rubin NVL72 · 1–8 planes</option></select>
+        <div id="plane-count-wrap" hidden><label for="plane-count">Compute planes</label><select id="plane-count"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option value="8" selected>8</option></select><p class="hint">Choose 1–8 active planes. The Vera Rubin reference design uses all 8.</p></div>
         <label for="racks">NVL72 racks</label><div class="field"><input id="racks" type="number" min="1" max="32" value="2" /><span class="suffix">racks</span></div><p class="hint">Each rack contains 18 compute trays with 4 GPUs per tray.</p>
-        <label for="tor-model">Cisco ToR switch</label><select id="tor-model">
-          <option value="9332D-H2R">Cisco Nexus 9332D-H2R · 32 × 400G</option>
-          <option value="9364D-GX2A">Cisco Nexus 9364D-GX2A · 64 × 400G</option>
-          <option value="9364E-SG2" selected>Cisco Nexus 9364E-SG2 · 64 × 800G</option>
-          <option value="9164E-NS4-O">Cisco Nexus 9164E-NS4-O · 64 × 800G</option>
-          <option value="N9364F-SG3-L">Cisco Nexus N9364F-SG3-L · 64 × 1.6T</option>
-          <option value="N9364F-SG3-A">Cisco Nexus N9364F-SG3-A · 64 × 1.6T</option>
-          <option value="freeform">Freeform · enter port count</option>
-        </select><p class="hint" id="tor-model-hint">32 front-panel data ports; maximum 400 Gb/s per port.</p>
-        <div id="freeform-ports-wrap" hidden><label for="freeform-ports">Ports per ToR switch</label><div class="field"><input id="freeform-ports" class="no-spinner" type="number" min="4" max="256" step="1" value="64" inputmode="numeric" /><span class="suffix">ports</span></div><p class="hint">Type the port count directly (for example, 32, 64, or 128).</p></div>
-        <label for="spine-ports">Interfaces per spine switch</label><div class="field"><input id="spine-ports" type="number" min="4" max="256" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">Spine count is sized to the total ToR uplink demand.</p>
-        <label for="downlink-speed">GPU-to-plane link speed</label><div class="field"><input id="downlink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint">Each GPU has one 400G link to each independent plane in this reference design.</p>
-        <label for="uplink-speed">ToR-to-spine uplink speed</label><div class="field"><input id="uplink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint">Uplink ports are sized by bandwidth. For example, 2 × 400G downlinks need 1 × 800G uplink.</p>
+        <label for="tor-model" id="tor-model-label">Cisco ToR switch</label><select id="tor-model"></select><p class="hint" id="tor-model-hint"></p>
+        <div id="freeform-ports-wrap" hidden><label for="freeform-ports">Ports per ToR switch</label><div class="field"><input id="freeform-ports" class="no-spinner" type="number" min="4" max="512" step="1" value="64" inputmode="numeric" /><span class="suffix">ports</span></div><p class="hint">Type the port count directly (for example, 32, 64, or 128).</p></div>
+        <label for="spine-ports">Interfaces per spine switch</label><div class="field"><input id="spine-ports" type="number" min="4" max="512" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">Spine count is sized to the total ToR uplink demand.</p>
+        <label for="downlink-speed">GPU-to-plane link speed</label><div class="field"><input id="downlink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint" id="downlink-hint">Each GPU has one 400G link to each plane.</p>
+        <label for="uplink-speed">ToR-to-spine uplink speed</label><div class="field"><input id="uplink-speed" type="number" min="25" max="1600" step="25" value="800" /><span class="suffix">Gb/s</span></div><p class="hint" id="uplink-hint">Uplink ports are sized by bandwidth. For example, 2 × 400G downlinks need 1 × 800G uplink.</p>
         <label class="toggle-row" for="prevent-oversub"><input id="prevent-oversub" type="checkbox" /><span class="toggle-copy">Prevent oversubscription<small>Ensure each ToR has at least 1:1 uplink bandwidth</small></span></label>
-        <div class="assumption"><strong>NVL72 compute-fabric model</strong><br>18 compute trays × 4 GPUs per tray = 72 GPUs per rack. There are 4 GPU-position rails in each of 2 independent planes. Each GPU connects to both planes at 400G per plane. Leaf counts use the selected Cisco switch's front-panel data port count and the configured link speeds; a rail is not assumed to equal one switch.<br><br><strong>Switch-count scope</strong><br>Counts are capacity estimates, not an exact NVIDIA Enterprise RA bill of materials or topology-specific rack-pair layout.</div>
+        <div class="assumption" id="assumption"></div>
         <div class="rail-key" id="rail-key"></div>
       </aside>
       <section class="main">
@@ -113,33 +107,67 @@
           <div class="panel stat"><div class="stat-label">Uplink capacity</div><div class="stat-value" id="capacity-stat">57.6 Tb/s</div><div class="stat-detail" id="capacity-detail">57.6 Tb/s down · 57.6 Tb/s up</div></div>
         </div>
         <div class="panel diagram-card">
-          <div class="diagram-head"><div><h2 class="panel-title">Cabling topology</h2><p>Each rack is shown once. Every GPU has two visible cables, one to each independent plane.</p></div><div class="diagram-actions"><div class="zoom-control"><button class="action-button" id="fit-button" type="button">Fit</button><input id="zoom" type="range" min="40" max="150" value="100" aria-label="Diagram zoom" /><span class="zoom-value" id="zoom-value">100%</span></div><button class="action-button" id="export-button" type="button">Export CSV</button><div class="badge" id="status">● NON-BLOCKING · 1:1</div></div></div>
+          <div class="diagram-head"><div><h2 class="panel-title">Cabling topology</h2><p id="diagram-note">Each rack is shown once. Every GPU has one cable to each independent plane.</p></div><div class="diagram-actions"><div class="zoom-control"><button class="action-button" id="fit-button" type="button">Fit</button><input id="zoom" type="range" min="40" max="150" value="100" aria-label="Diagram zoom" /><span class="zoom-value" id="zoom-value">100%</span></div><button class="action-button" id="export-button" type="button">Export CSV</button><div class="badge" id="status">● NON-BLOCKING · 1:1</div></div></div>
           <div class="diagram-scroll" id="diagram-scroll"><svg id="diagram" role="img" aria-label="Interactive NVL72 GPU rail cabling diagram"></svg></div>
-          <div class="legend"><span><i class="legend-line"></i>Plane A cable · solid</span><span><i class="legend-line plane-b"></i>Plane B cable · dashed</span><span><i class="swatch" style="color:#f0a35e;background:#f0a35e"></i> Cable color identifies GPU rail</span><span><i class="legend-line up"></i>Leaf to spine uplinks</span></div>
+          <div class="legend" id="legend"></div>
         </div>
         <div class="panel rail-card"><h2>Plane and rail allocation</h2><div class="rail-grid" id="rail-grid"></div></div>
-        <p class="footer">Planning model: each rack has 18 compute trays and 72 GPUs. Every GPU has one downlink in each of two separate compute planes. The selected Cisco ToR model sets ToR port capacity; the configured link speeds set bandwidth. Spine capacity uses the separate spine interface count. This planner estimates switch counts and does not reproduce a topology-specific reference-architecture layout.</p>
+        <p class="footer" id="footer">Planning model: each rack has 18 compute trays and 72 GPUs. Every GPU has one downlink in each of two separate compute planes. The selected Cisco ToR model sets ToR port capacity; the configured link speeds set bandwidth. Spine capacity uses the separate spine interface count. This planner estimates switch counts and does not reproduce a topology-specific reference-architecture layout.</p>
       </section>
     </div>
   </main>
 <script>
 (() => {
-  const TRAYS_PER_RACK = 18, GPUS_PER_TRAY = 4, PLANES = 2;
+  const TRAYS_PER_RACK = 18, GPUS_PER_TRAY = 4;
   const colors = ['#f0a35e','#59c8ef','#b899ff','#f0738f'];
   const $ = id => document.getElementById(id);
-  const TOR_MODELS = {
-    '9332D-H2R': {name:'Cisco Nexus 9332D-H2R', ports:32, maxSpeed:400},
-    '9364D-GX2A': {name:'Cisco Nexus 9364D-GX2A', ports:64, maxSpeed:400},
-    '9364E-SG2': {name:'Cisco Nexus 9364E-SG2', ports:64, maxSpeed:800},
-    '9164E-NS4-O': {name:'Cisco Nexus 9164E-NS4-O', ports:64, maxSpeed:800},
-    'N9364F-SG3-L': {name:'Cisco Nexus N9364F-SG3-L', ports:64, maxSpeed:1600},
-    'N9364F-SG3-A': {name:'Cisco Nexus N9364F-SG3-A', ports:64, maxSpeed:1600}
+  const PROFILES = {
+    gb300: {
+      name:'GB300 NVL72', planes:2, selectablePlanes:false, linkSpeed:400, uplinkSpeed:800,
+      vendor:'Cisco', models:[
+        {id:'9332D-H2R',name:'Cisco Nexus 9332D-H2R',ports:32,portRate:400,maxSpeed:400},
+        {id:'9364D-GX2A',name:'Cisco Nexus 9364D-GX2A',ports:64,portRate:400,maxSpeed:400},
+        {id:'9364E-SG2',name:'Cisco Nexus 9364E-SG2',ports:64,portRate:800,maxSpeed:800},
+        {id:'9164E-NS4-O',name:'Cisco Nexus 9164E-NS4-O',ports:64,portRate:800,maxSpeed:800},
+        {id:'N9364F-SG3-L',name:'Cisco Nexus N9364F-SG3-L',ports:64,portRate:1600,maxSpeed:1600},
+        {id:'N9364F-SG3-A',name:'Cisco Nexus N9364F-SG3-A',ports:64,portRate:1600,maxSpeed:1600}
+      ], defaultModel:'9364E-SG2', defaultSpinePorts:64
+    },
+    vera: {
+      name:'Vera Rubin NVL72', planes:8, selectablePlanes:true, linkSpeed:200, uplinkSpeed:800,
+      vendor:'NVIDIA Spectrum-X', models:[
+        {id:'SN6600-LD',name:'NVIDIA Spectrum SN6600-LD',ports:128,portRate:800,maxSpeed:800,planesPerLeaf:1,description:'128 × 800G ports (512 × 200G lanes)'},
+        {id:'SN6810-LD',name:'NVIDIA Spectrum SN6810-LD',ports:128,portRate:800,maxSpeed:800,planesPerLeaf:1,description:'128 × 800G ports (512 × 200G lanes)'},
+        {id:'SN6800-LD',name:'NVIDIA Spectrum SN6800-LD',ports:512,portRate:800,maxSpeed:800,planesPerLeaf:4,description:'512 × 800G ports; each leaf spans four planes'}
+      ], defaultModel:'SN6600-LD', defaultSpinePorts:128
+    }
   };
-  const racksInput = $('racks'), torModelInput = $('tor-model'), torPortsInput = $('freeform-ports'), spinePortsInput = $('spine-ports');
+  const racksInput = $('racks'), nvlModelInput = $('nvl-model'), planeCountInput = $('plane-count');
+  const torModelInput = $('tor-model'), torPortsInput = $('freeform-ports'), spinePortsInput = $('spine-ports');
   const downlinkSpeedInput = $('downlink-speed'), uplinkSpeedInput = $('uplink-speed');
   const preventOversubInput = $('prevent-oversub');
   const zoomInput = $('zoom');
   let diagramWidth = 900, diagramHeight = 800, zoomPercent = 100, lastSchedule = [];
+  let activeProfile = PROFILES.gb300;
+  function populateTorModels(profile, selectedId=profile.defaultModel) {
+    torModelInput.innerHTML = profile.models.map(model=>`<option value="${model.id}">${model.name} · ${model.description || `${model.ports} × ${model.maxSpeed}G`}</option>`).join('') + '<option value="freeform">Freeform · enter port count</option>';
+    torModelInput.value=selectedId;
+    $('tor-model-label').textContent=`${profile.vendor} leaf / ToR switch`;
+  }
+  function selectProfile(profileId) {
+    activeProfile=PROFILES[profileId] || PROFILES.gb300;
+    $('plane-count-wrap').hidden=!activeProfile.selectablePlanes;
+    planeCountInput.value=activeProfile.planes;
+    populateTorModels(activeProfile);
+    downlinkSpeedInput.value=activeProfile.linkSpeed;
+    uplinkSpeedInput.value=activeProfile.uplinkSpeed;
+    spinePortsInput.value=activeProfile.defaultSpinePorts;
+    $('system-mark').textContent=`${activeProfile.name} · 18 compute trays · 72 GPUs / rack`;
+  }
+  function selectedSwitch() {
+    return activeProfile.models.find(model=>model.id===torModelInput.value) || null;
+  }
+  selectProfile('gb300');
   $('rail-key').innerHTML = colors.map((c,i)=>`<div class="key-item"><i class="swatch" style="color:${c};background:${c}"></i>Rail ${i}</div>`).join('');
   const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function applyZoom() {
@@ -150,60 +178,90 @@
   }
   function render() {
     let racks = Math.max(1, Math.min(32, Math.trunc(Number(racksInput.value)||1)));
-    const isFreeform = torModelInput.value === 'freeform';
-    let torPorts = isFreeform
-      ? Math.max(4, Math.min(256, Math.trunc(Number(torPortsInput.value)||64)))
-      : (TOR_MODELS[torModelInput.value] || TOR_MODELS['9364E-SG2']).ports;
-    const torModel = isFreeform
-      ? {name:'Freeform switch', ports:torPorts, maxSpeed:1600}
-      : (TOR_MODELS[torModelInput.value] || TOR_MODELS['9364E-SG2']);
-    let spinePortsPerSwitch = Math.max(4, Math.min(256, Math.trunc(Number(spinePortsInput.value)||4)));
-    let downlinkSpeed = Math.max(25, Math.min(torModel.maxSpeed, Number(downlinkSpeedInput.value)||25));
-    let uplinkSpeed = Math.max(25, Math.min(torModel.maxSpeed, Number(uplinkSpeedInput.value)||25));
+    const planes = activeProfile.selectablePlanes
+      ? Math.max(1,Math.min(8,Math.trunc(Number(planeCountInput.value)||8)))
+      : activeProfile.planes;
+    planeCountInput.value=planes;
+    const isFreeform=torModelInput.value==='freeform';
+    const selectedModel=selectedSwitch();
+    const modelMaxSpeed=selectedModel?.maxSpeed||1600;
+    let downlinkSpeed=Math.max(25,Math.min(activeProfile.linkSpeed,modelMaxSpeed,Number(downlinkSpeedInput.value)||activeProfile.linkSpeed));
+    let uplinkSpeed=Math.max(25,Math.min(modelMaxSpeed,Number(uplinkSpeedInput.value)||activeProfile.uplinkSpeed));
+    const torPorts=isFreeform?Math.max(4,Math.min(512,Math.trunc(Number(torPortsInput.value)||64))):selectedModel.ports;
+    const planesPerLeaf=selectedModel?.planesPerLeaf||1;
+    const planeBankCount=Math.ceil(planes/planesPerLeaf);
+    const torPortRate=selectedModel?.portRate||Math.max(uplinkSpeed,downlinkSpeed*Math.min(planesPerLeaf,planes));
+    const torModel=selectedModel||{id:'freeform',name:'Freeform switch',ports:torPorts,portRate:torPortRate,maxSpeed:1600};
+    let spinePortsPerSwitch=Math.max(4,Math.min(512,Math.trunc(Number(spinePortsInput.value)||activeProfile.defaultSpinePorts)));
     racksInput.value = racks;
     spinePortsInput.value = spinePortsPerSwitch;
     downlinkSpeedInput.value = downlinkSpeed; uplinkSpeedInput.value = uplinkSpeed;
-    downlinkSpeedInput.max = torModel.maxSpeed; uplinkSpeedInput.max = torModel.maxSpeed;
+    downlinkSpeedInput.max=Math.min(activeProfile.linkSpeed,torModel.maxSpeed||activeProfile.linkSpeed);
+    uplinkSpeedInput.max=torModel.maxSpeed||1600;
     $('freeform-ports-wrap').hidden = !isFreeform;
+    document.querySelectorAll('.controls input[type="number"]').forEach(input=>input.classList.toggle('no-spinner',isFreeform));
     $('tor-model-hint').textContent = isFreeform
-      ? `${torPorts} user-defined ports; the switch model and per-port rate are not validated.`
-      : `${torPorts} front-panel data ports; maximum ${torModel.maxSpeed >= 1000 ? `${(torModel.maxSpeed/1000).toFixed(1)} Tb/s` : `${torModel.maxSpeed} Gb/s`} per port. Configured link rates model supported native or breakout modes.`;
+      ? `${torPorts} user-defined interfaces; model rate and breakout support are assumptions.`
+      : (torModel.description||`${torPorts} physical ports, up to ${torModel.portRate} Gb/s each.`);
+    $('intro').textContent=activeProfile.selectablePlanes
+      ? 'Vera Rubin uses four GPU-position rails across up to eight compute planes. Each plane is independently colored by rail and shown with a distinct line pattern.'
+      : 'GB300 uses four GPU-position rails across two independent compute planes. Each GPU has a 400G link to each plane.';
+    $('downlink-hint').textContent=activeProfile.selectablePlanes
+      ? `Each active plane carries up to ${downlinkSpeed}G per GPU; Vera Rubin reference links are 200G per plane.`
+      : `Each GPU has one ${downlinkSpeed}G link to each of the two compute planes.`;
+    $('uplink-hint').textContent=activeProfile.selectablePlanes
+      ? `Leaf-to-spine capacity is sized at ${uplinkSpeed}G per configured uplink; reference links aggregate four 200G lanes into 800G.`
+      : `Reference leaf-to-spine links are 800G; uplink capacity is calculated from the selected rate.`;
+    $('assumption').innerHTML=activeProfile.selectablePlanes
+      ? `<strong>Vera Rubin compute-fabric model</strong><br>18 compute trays × 4 GPU packages = 72 per rack. Four GPU-position rails connect across ${planes} active plane${planes===1?'':'s'}. The reference design groups 14 racks into a scalable unit and uses eight planes at 200G per plane. SN6800-LD leaves span four planes; SN6600-LD / SN6810-LD use separate leaf switches per plane.<br><br><strong>Switch-count scope</strong><br>Counts are capacity estimates from port bandwidth and do not round partial rack counts up to a full 14-rack unit or include external shuffle hardware.`
+      : `<strong>GB300 compute-fabric model</strong><br>18 compute trays × 4 GPUs = 72 per rack. Four GPU-position rails connect to two independent planes at ${downlinkSpeed}G per plane. The Cisco RA uses 800G leaf-to-spine links and two-rack scalable units.<br><br><strong>Switch-count scope</strong><br>Counts are capacity estimates, not an exact Cisco RA bill of materials or topology-specific rack-pair layout.`;
     const endpointsPerRail = racks*TRAYS_PER_RACK;
-    const baselineLeavesPerRail = Math.ceil(endpointsPerRail/torPorts);
     const preventOversub = preventOversubInput.checked;
-    const requiredUplinks = down => Math.ceil(down*downlinkSpeed/uplinkSpeed-1e-10);
-    let maxNonblockingDownlinks = 0;
-    for(let down=1;down<=torPorts;down++) if(down+requiredUplinks(down)<=torPorts) maxNonblockingDownlinks=down;
-    const preventImpossible = preventOversub && maxNonblockingDownlinks===0;
-    const downCap = preventOversub && !preventImpossible ? maxNonblockingDownlinks : torPorts;
-    const railPlaneCount = GPUS_PER_TRAY*PLANES;
-    const leavesPerRail = Math.ceil(endpointsPerRail/downCap), leafCount = leavesPerRail*railPlaneCount;
-    const extraToRs = Math.max(0,leafCount-baselineLeavesPerRail*railPlaneCount);
-    const uplinksFor = down => Math.max(0, Math.min(requiredUplinks(down), torPorts-down));
-    const baseDownlinks = Math.floor(endpointsPerRail/leavesPerRail), extraDownlinks = endpointsPerRail%leavesPerRail;
-    const leafDownlinks = Array.from({length:leavesPerRail},(_,i)=>baseDownlinks+(i<extraDownlinks?1:0));
-    const uplinksPerRail = leafDownlinks.reduce((sum,down)=>sum+uplinksFor(down),0);
-    const downlinks = endpointsPerRail*railPlaneCount, totalUplinks = uplinksPerRail*railPlaneCount;
-    const totalDownlinkCapacity = downlinks*downlinkSpeed, totalUplinkCapacity = totalUplinks*uplinkSpeed;
-    const spineCountPerPlane = Math.max(1,Math.ceil(uplinksPerRail*GPUS_PER_TRAY/spinePortsPerSwitch));
-    const spineCount = spineCountPerPlane*PLANES;
-    const physicalLinks = downlinks+totalUplinks;
-    const leafRatios = leafDownlinks.map(down=>{
-      const capacity=uplinksFor(down)*uplinkSpeed;
-      return capacity===0?Infinity:down*downlinkSpeed/capacity;
+    const physicalPortsFor=(links,linkRate)=>Math.ceil(links*linkRate/torPortRate-1e-10);
+    const bankData=Array.from({length:planeBankCount},(_,bank)=>{
+      const bankPlanes=Math.min(planesPerLeaf,planes-bank*planesPerLeaf);
+      const downlinkRate=downlinkSpeed*bankPlanes;
+      const requiredUplinks=down=>Math.ceil(down*downlinkRate/uplinkSpeed-1e-10);
+      const uplinksFor=down=>Math.max(0,Math.min(requiredUplinks(down),Math.floor((torPorts-physicalPortsFor(down,downlinkRate))*torPortRate/uplinkSpeed+1e-10)));
+      let maxNonblockingDownlinks=0;
+      const maxDownlinks=Math.floor(torPorts*torPortRate/downlinkRate);
+      for(let down=1;down<=maxDownlinks;down++) if(physicalPortsFor(down,downlinkRate)+physicalPortsFor(requiredUplinks(down),uplinkSpeed)<=torPorts) maxNonblockingDownlinks=down;
+      const baseline=Math.ceil(endpointsPerRail/maxDownlinks);
+      const impossible=preventOversub&&maxNonblockingDownlinks===0;
+      const downCap=preventOversub&&!impossible?maxNonblockingDownlinks:maxDownlinks;
+      const leaves=Math.ceil(endpointsPerRail/downCap);
+      const base=Math.floor(endpointsPerRail/leaves), remainder=endpointsPerRail%leaves;
+      const leafDownlinks=Array.from({length:leaves},(_,i)=>base+(i<remainder?1:0));
+      const uplinksPerRail=leafDownlinks.reduce((sum,down)=>sum+uplinksFor(down),0);
+      const ratios=leafDownlinks.map(down=>{const capacity=uplinksFor(down)*uplinkSpeed;return capacity===0?Infinity:down*downlinkRate/capacity;});
+      return {bank,bankPlanes,downlinkRate,requiredUplinks,uplinksFor,maxNonblockingDownlinks,impossible,downCap,leaves,baseline,leafDownlinks,uplinksPerRail,ratios};
     });
+    const railPlaneCount=GPUS_PER_TRAY*planeBankCount;
+    const leafCount=bankData.reduce((sum,data)=>sum+data.leaves*GPUS_PER_TRAY,0);
+    const baselineLeafCount=bankData.reduce((sum,data)=>sum+data.baseline*GPUS_PER_TRAY,0);
+    const extraToRs=Math.max(0,leafCount-baselineLeafCount);
+    const preventImpossible=bankData.some(data=>data.impossible);
+    const totalDownlinks=endpointsPerRail*GPUS_PER_TRAY*planes;
+    const totalPhysicalDownlinks=endpointsPerRail*GPUS_PER_TRAY*planeBankCount;
+    const totalUplinks=bankData.reduce((sum,data)=>sum+data.uplinksPerRail*GPUS_PER_TRAY,0);
+    const totalDownlinkCapacity=totalDownlinks*downlinkSpeed, totalUplinkCapacity=totalUplinks*uplinkSpeed;
+    const spineCountPerBank=bankData.map(data=>Math.max(1,Math.ceil(data.uplinksPerRail*GPUS_PER_TRAY*uplinkSpeed/(spinePortsPerSwitch*uplinkSpeed))));
+    const spineOffsets=spineCountPerBank.map((_,bank)=>spineCountPerBank.slice(0,bank).reduce((a,b)=>a+b,0));
+    const spineCount=spineCountPerBank.reduce((a,b)=>a+b,0);
+    const physicalLinks=totalPhysicalDownlinks+totalUplinks;
+    const leafRatios=bankData.flatMap(data=>data.ratios);
     const oversubscribed = leafRatios.some(ratio=>ratio>1+1e-9);
     const worstRatio = Math.max(...leafRatios);
     const overallRatio = Number.isFinite(worstRatio)?worstRatio.toFixed(2).replace(/\.00$/,''):'∞';
     $('gpu-stat').textContent = (racks*TRAYS_PER_RACK*GPUS_PER_TRAY).toLocaleString();
     $('leaf-stat').textContent = leafCount.toLocaleString();
-    $('leaf-detail').textContent = preventImpossible
-      ? `${leavesPerRail} per rail-plane · 1:1 impossible at current ports/speeds`
+    $('leaf-detail').textContent=preventImpossible
+      ? `1:1 impossible at current ports / speeds`
       : preventOversub
-      ? `${leavesPerRail} per rail-plane · +${extraToRs} ToRs to prevent oversubscription`
-      : leavesPerRail===1?'1 per rail-plane':`${leavesPerRail} per rail-plane · ${endpointsPerRail} endpoints / rail`;
+      ? `${extraToRs} extra leaf switches for 1:1 capacity`
+      : `${leafCount} across ${planes} plane${planes===1?'':'s'} / rail groups`;
     $('spine-stat').textContent = spineCount.toLocaleString();
-    $('spine-stat').nextElementSibling.textContent = `${spineCountPerPlane} per plane · ${spinePortsPerSwitch} ports / spine`;
+    $('spine-stat').nextElementSibling.textContent=`${spineCountPerBank.join(' / ')} per plane group · ${spinePortsPerSwitch} ports / spine`;
     $('link-stat').textContent = physicalLinks.toLocaleString();
     $('capacity-stat').textContent = `${(totalUplinkCapacity/1000).toFixed(1)} Tb/s`;
     $('capacity-detail').textContent = `${(totalDownlinkCapacity/1000).toFixed(1)} Tb/s down · ${(totalUplinkCapacity/1000).toFixed(1)} Tb/s up`;
@@ -212,32 +270,40 @@
     status.textContent = preventImpossible ? '⚠ 1:1 IMPOSSIBLE · choose a higher-capacity ToR or uplink speed'
       : oversubscribed ? `⚠ OVERSUBSCRIBED · ${overallRatio}:1` : `● NON-BLOCKING · ${overallRatio}:1`;
 
-    // Draw each rack once, then route two cables from every GPU position to
-    // the matching rail's leaf switches in the independent A and B planes.
-    const padTop=58, rackStart=38, rackWidth=240, rackY=66, trayRowH=48;
+    // Each rack appears once. Plane lanes route to independent rail groups;
+    // multi-plane leaves (SN6800-LD) are drawn once per rail and plane bank.
+    const padTop=62, rackStart=38, rackWidth=240, rackY=70, trayRowH=48;
     const rackHeight=38+TRAYS_PER_RACK*trayRowH+8, rackStep=rackHeight+26;
-    const groupPitch=leavesPerRail*64+30, torX=rackStart+rackWidth+110;
-    const torWidth=172, torHeight=54, spineX=torX+torWidth+100, spineWidth=112;
+    const groupPitch=Math.max(...bankData.map(data=>data.leaves))*64+34, torX=rackStart+rackWidth+110;
+    const torWidth=184, torHeight=56, spineX=torX+torWidth+100, spineWidth=122;
     const height=Math.max(rackY+(racks-1)*rackStep+rackHeight+28,padTop+railPlaneCount*groupPitch+24,padTop+spineCount*52+32);
-    const width=Math.max(900,spineX+spineWidth+44);
+    const width=Math.max(950,spineX+spineWidth+44);
     diagramWidth=width; diagramHeight=height;
+    const planeLabel=bank=>{
+      const first=bank*planesPerLeaf+1, last=Math.min(planes,(bank+1)*planesPerLeaf);
+      return first===last?`PLANE ${first}`:`PLANES ${first}–${last}`;
+    };
+    const planePatterns=['','4 3','1 3','7 2 1 2','2 2','8 2','4 1 1 1','1 2 5 2'];
+    const planeLabelFor=plane=>`Plane ${plane+1}`;
     let out=[`<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`,
       `<text x="${rackStart}" y="28" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.2">NVL72 RACKS · 18 COMPUTE TRAYS · 4 GPUs / TRAY</text>`,
       `<text x="${torX}" y="28" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.1">${esc(torModel.name.toUpperCase())} · LEAF SWITCHES</text>`,
       `<text x="${spineX}" y="28" fill="#8fa2b1" font-size="10" font-weight="700" letter-spacing="1.4">SPINE FABRICS</text>`];
-    for(let group=0;group<railPlaneCount;group++) {
-      const plane=Math.floor(group/GPUS_PER_TRAY), rail=group%GPUS_PER_TRAY, groupTop=padTop+group*groupPitch;
+    for(let bank=0;bank<planeBankCount;bank++) for(let rail=0;rail<GPUS_PER_TRAY;rail++) {
+      const group=bank*GPUS_PER_TRAY+rail, groupTop=padTop+group*groupPitch;
       out.push(`<rect x="${torX-10}" y="${groupTop-8}" width="${spineX+spineWidth-torX+20}" height="${groupPitch-3}" rx="8" fill="${colors[rail]}" opacity=".035" stroke="${colors[rail]}" stroke-opacity=".18"/>`);
-      out.push(`<text x="${torX}" y="${groupTop}" fill="${colors[rail]}" font-size="9" font-weight="700">PLANE ${plane===0?'A':'B'} · RAIL ${rail}</text>`);
+      out.push(`<text x="${torX}" y="${groupTop}" fill="${colors[rail]}" font-size="9" font-weight="700">${planeLabel(bank)} · RAIL ${rail}</text>`);
     }
 
-    const spinePortUsage=Array(spineCount).fill(0), planeUplinkCount=Array(PLANES).fill(0);
+    const spinePortUsage=Array(spineCount).fill(0), nextSpineByBank=Array(planeBankCount).fill(0);
     const scheduleRows=[['Link type','Plane / rail','Source endpoint / switch','Source port','Destination switch / endpoint','Destination port','Speed (Gb/s)']];
-    const endpointAssignments=[];
-    for(let li=0;li<leavesPerRail;li++) for(let local=0;local<leafDownlinks[li];local++) endpointAssignments.push({leafIndex:li,local});
+    const endpointAssignmentsByBank=bankData.map(data=>{
+      const assignments=[];
+      for(let li=0;li<data.leaves;li++) for(let local=0;local<data.leafDownlinks[li];local++) assignments.push({leafIndex:li,local});
+      return assignments;
+    });
 
-    // Rack chassis and all GPUs appear exactly once. Each GPU tile uses its
-    // rail color; cable style distinguishes the two plane connections.
+    // Rack chassis and GPU packages are shown once, with a color for each GPU rail.
     for(let r=0;r<racks;r++) {
       const rx=rackStart, rackTop=rackY+r*rackStep;
       out.push(`<rect x="${rx}" y="${rackTop}" width="${rackWidth}" height="${rackHeight}" rx="9" fill="#121d28" stroke="#405363"/>`);
@@ -248,71 +314,98 @@
         out.push(`<text x="${rx+12}" y="${ty+23}" fill="#aebdca" font-size="8" font-weight="650">TRAY ${t}</text>`);
         for(let i=0;i<GPUS_PER_TRAY;i++) {
           const gx=rx+72, gy=ty+2+i*11, color=colors[i];
-          out.push(`<rect x="${gx}" y="${gy}" width="156" height="10.5" rx="3" fill="${color}" fill-opacity=".82" stroke="#e6edf2" stroke-opacity=".58" stroke-width=".55"><title>Rack ${r+1}, compute tray ${t}, GPU ${i}: one cable to each plane on rail ${i}</title></rect>`);
+          out.push(`<rect x="${gx}" y="${gy}" width="156" height="10.5" rx="3" fill="${color}" fill-opacity=".82" stroke="#e6edf2" stroke-opacity=".58" stroke-width=".55"><title>Rack ${r+1}, compute tray ${t}, GPU ${i}: one connection per active plane on rail ${i}</title></rect>`);
           out.push(`<text x="${gx+7}" y="${gy+7.8}" fill="#0b1018" font-size="7.5" font-weight="800">GPU ${i}</text>`);
         }
       }
     }
 
-    // Render both plane paths for every GPU, using solid for A and dashed for B.
     const torElements=[];
-    for(let plane=0;plane<PLANES;plane++) for(let rail=0;rail<GPUS_PER_TRAY;rail++) {
-      const group=plane*GPUS_PER_TRAY+rail, color=colors[rail], lx=torX;
-      const groupTop=padTop+group*groupPitch;
+    // Draw one lane for every GPU and active plane. Dashed patterns distinguish planes;
+    // rail colors distinguish the four GPU positions within each compute tray.
+    for(let plane=0;plane<planes;plane++) for(let rail=0;rail<GPUS_PER_TRAY;rail++) {
+      const bank=Math.floor(plane/planesPerLeaf), data=bankData[bank], group=bank*GPUS_PER_TRAY+rail;
+      const color=colors[rail], lx=torX, groupTop=padTop+group*groupPitch;
+      const assignments=endpointAssignmentsByBank[bank];
       for(let r=0;r<racks;r++) for(let t=0;t<TRAYS_PER_RACK;t++) {
-        const rx=rackStart, rackTop=rackY+r*rackStep, gx=rx+72+156;
+        const rackTop=rackY+r*rackStep, gx=rackStart+72+156;
         const tileY=rackTop+31+t*trayRowH+2+rail*11;
-        const endpointIndex=r*TRAYS_PER_RACK+t, {leafIndex,local}=endpointAssignments[endpointIndex];
-        const ly=groupTop+10+leafIndex*64, n=leafDownlinks[leafIndex];
+        const endpointIndex=r*TRAYS_PER_RACK+t, {leafIndex,local}=assignments[endpointIndex];
+        const ly=groupTop+10+leafIndex*64, n=data.leafDownlinks[leafIndex];
         const portY=ly+7+(local/(n-1||1))*29;
-        const dash=plane===1?' stroke-dasharray="4 3"':'';
-        const startY=tileY+(plane===0?2.1:6.1), startX=gx;
-        out.push(`<path d="M ${startX} ${startY} C ${startX+30} ${startY}, ${lx-36} ${portY}, ${lx} ${portY}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity="${plane===0?'.78':'.65'}"${dash}><title>Rack ${r+1}, tray ${t}, GPU ${rail} → Plane ${plane===0?'A':'B'}, Rail ${rail}, ToR ${leafIndex+1}</title></path>`);
-        scheduleRows.push(['GPU to ToR',`Plane ${plane===0?'A':'B'} · Rail ${rail}`,`NVL72 Rack ${r+1} Tray ${t} GPU ${rail}`,`GPU ${rail} plane link`,`${torModel.name} P${plane+1}.R${rail}.${leafIndex+1}`,`Port ${local+1}`,downlinkSpeed]);
+        const pattern=planePatterns[plane], dash=pattern?` stroke-dasharray="${pattern}"`:'';
+        const startY=tileY+1.5+(plane/(Math.max(1,planes-1)))*7.5;
+        out.push(`<path d="M ${gx} ${startY} C ${gx+30} ${startY}, ${lx-36} ${portY}, ${lx} ${portY}" fill="none" stroke="${color}" stroke-width="1.35" stroke-opacity="${plane===0?'.8':'.62'}"${dash}><title>Rack ${r+1}, tray ${t}, GPU ${rail} → ${planeLabelFor(plane)}, rail ${rail}, ${torModel.name} leaf ${leafIndex+1}</title></path>`);
+        const laneNote=planesPerLeaf>1?` · plane lane ${plane%planesPerLeaf+1}`:'';
+        scheduleRows.push(['GPU to leaf',`${planeLabelFor(plane)} · Rail ${rail}`,`NVL72 Rack ${r+1} Tray ${t} GPU ${rail}`,`GPU ${rail} plane link`,`${torModel.name} ${planeLabel(bank)} · Rail ${rail} · Leaf ${leafIndex+1}`,`Port ${local+1}${laneNote}`,downlinkSpeed]);
       }
-      for(let li=0;li<leavesPerRail;li++) {
-        const n=leafDownlinks[li], up=uplinksFor(n);
-        const torRatio=up===0?'∞':(n*downlinkSpeed/(up*uplinkSpeed)).toFixed(2).replace(/\.00$/,'');
-        const ly=groupTop+10+li*64, bandwidthOversubscribed=up*uplinkSpeed<n*downlinkSpeed;
-        torElements.push(`<rect x="${lx}" y="${ly}" width="${torWidth}" height="${torHeight}" rx="6" fill="${bandwidthOversubscribed?'#302319':'#172532'}" stroke="${bandwidthOversubscribed?'#d28a3f':color}" stroke-opacity=".9"><title>${n} × ${downlinkSpeed} Gb/s downlinks; ${up} × ${uplinkSpeed} Gb/s uplinks</title></rect>`);
-        torElements.push(`<text x="${lx+7}" y="${ly+13}" fill="#e3edf3" font-size="8.5" font-weight="700">${esc(torModel.name.replace('Cisco Nexus ','Nexus '))}</text>`);
-        torElements.push(`<text x="${lx+7}" y="${ly+24}" fill="#aebdca" font-size="7.5">TOR P${plane+1}.R${rail}.${li+1} · ${torModel.ports} × ${torModel.maxSpeed >= 1000 ? `${torModel.maxSpeed/1000}T` : `${torModel.maxSpeed}G`}</text>`);
-        torElements.push(`<text x="${lx+7}" y="${ly+34}" fill="#aebdca" font-size="7.5">${n} down · ${up} up</text>`);
-        torElements.push(`<text x="${lx+7}" y="${ly+44}" fill="${bandwidthOversubscribed?'#ffd69b':color}" font-size="7.5">${bandwidthOversubscribed?`OVERSUB · ${torRatio}:1`:`${torRatio}:1 · ${torPorts-n-up} spare`}</text>`);
+    }
+
+    // Draw each leaf once, then assign its uplinks to the spine switches in its plane bank.
+    for(let bank=0;bank<planeBankCount;bank++) for(let rail=0;rail<GPUS_PER_TRAY;rail++) {
+      const data=bankData[bank], group=bank*GPUS_PER_TRAY+rail, groupTop=padTop+group*groupPitch, color=colors[rail];
+      for(let li=0;li<data.leaves;li++) {
+        const n=data.leafDownlinks[li], up=data.uplinksFor(n), totalDown=n*data.downlinkRate;
+        const torRatio=up===0?'∞':(totalDown/(up*uplinkSpeed)).toFixed(2).replace(/\.00$/,'');
+        const ly=groupTop+10+li*64, bandwidthOversubscribed=up*uplinkSpeed<totalDown;
+        const downPorts=physicalPortsFor(n,data.downlinkRate), upPorts=physicalPortsFor(up,uplinkSpeed), spare=Math.max(0,torPorts-downPorts-upPorts);
+        torElements.push(`<rect x="${torX}" y="${ly}" width="${torWidth}" height="${torHeight}" rx="6" fill="${bandwidthOversubscribed?'#302319':'#172532'}" stroke="${bandwidthOversubscribed?'#d28a3f':color}" stroke-opacity=".9"><title>${n} GPU lanes × ${data.downlinkRate/data.bankPlanes} Gb/s per active plane; ${up} × ${uplinkSpeed} Gb/s uplinks</title></rect>`);
+        torElements.push(`<text x="${torX+7}" y="${ly+13}" fill="#e3edf3" font-size="8" font-weight="700">${esc(torModel.name.replace('Cisco Nexus ','Nexus '))}</text>`);
+        torElements.push(`<text x="${torX+7}" y="${ly+24}" fill="#aebdca" font-size="7.2">${planeLabel(bank)} · R${rail} · Leaf ${li+1} · ${torPorts} ports</text>`);
+        torElements.push(`<text x="${torX+7}" y="${ly+35}" fill="#aebdca" font-size="7.5">${n*data.bankPlanes} down lanes · ${up} up</text>`);
+        torElements.push(`<text x="${torX+7}" y="${ly+46}" fill="${bandwidthOversubscribed?'#ffd69b':color}" font-size="7.5">${bandwidthOversubscribed?`OVERSUB · ${torRatio}:1`:`${torRatio}:1 · ${spare} spare ports`}</text>`);
         for(let u=0;u<up;u++) {
-          const si=plane*spineCountPerPlane+(planeUplinkCount[plane]%spineCountPerPlane);
-          const spinePort=spinePortUsage[si]+1, torPort=n+u+1;
-          const sx=spineX, sy=ly+8+(u%8)*3.8;
-          const targetY=padTop+26+si*52;
-          out.push(`<path d="M ${lx+torWidth} ${sy} C ${lx+torWidth+35} ${sy}, ${sx-30} ${targetY}, ${sx} ${targetY}" fill="none" stroke="${color}" stroke-width=".8" stroke-opacity=".26"><title>Plane ${plane===0?'A':'B'} Rail ${rail} ToR ${li+1} uplink ${u+1} → Spine ${si+1}</title></path>`);
-          scheduleRows.push(['ToR to Spine',`Plane ${plane===0?'A':'B'} · Rail ${rail}`,`${torModel.name} P${plane+1}.R${rail}.${li+1}`,`Port ${torPort}`,`Spine P${plane+1}.${si%spineCountPerPlane+1}`,`Port ${spinePort}`,uplinkSpeed]);
-          spinePortUsage[si]++; planeUplinkCount[plane]++;
+          const si=spineOffsets[bank]+(nextSpineByBank[bank]%spineCountPerBank[bank]);
+          const spinePort=spinePortUsage[si]+1;
+          const sourcePort=downPorts+Math.floor(u*uplinkSpeed/torPortRate)+1;
+          const sy=ly+8+(u%8)*3.8, targetY=padTop+26+si*52;
+          out.push(`<path d="M ${torX+torWidth} ${sy} C ${torX+torWidth+35} ${sy}, ${spineX-30} ${targetY}, ${spineX} ${targetY}" fill="none" stroke="${color}" stroke-width=".8" stroke-opacity=".26"><title>${planeLabel(bank)} rail ${rail} leaf ${li+1} uplink ${u+1} → spine ${si-spineOffsets[bank]+1}</title></path>`);
+          scheduleRows.push(['Leaf to spine',`${planeLabel(bank)} · Rail ${rail}`,`${torModel.name} ${planeLabel(bank)} · Rail ${rail} · Leaf ${li+1}`,`Port ${sourcePort}`,`Spine ${planeLabel(bank)} · ${si-spineOffsets[bank]+1}`,`Port ${spinePort}`,uplinkSpeed]);
+          spinePortUsage[si]++; nextSpineByBank[bank]++;
         }
       }
     }
     out.push(...torElements);
     for(let si=0;si<spineCount;si++) {
-      const sx=spineX, sy=padTop+26+si*52;
+      const bank=spineOffsets.findIndex((offset,index)=>si>=offset&&si<offset+spineCountPerBank[index]);
+      const localIndex=si-spineOffsets[bank], sx=spineX, sy=padTop+26+si*52;
       out.push(`<rect x="${sx}" y="${sy-15}" width="${spineWidth}" height="30" rx="6" fill="#1a2733" stroke="#64798b"/>`);
-      out.push(`<text x="${sx+spineWidth/2}" y="${sy-2}" text-anchor="middle" fill="#e4edf3" font-size="8" font-weight="700">P${Math.floor(si/spineCountPerPlane)+1} SPINE ${si%spineCountPerPlane+1}</text>`);
+      out.push(`<text x="${sx+spineWidth/2}" y="${sy-2}" text-anchor="middle" fill="#e4edf3" font-size="7.7" font-weight="700">${planeLabel(bank)} SPINE ${localIndex+1}</text>`);
       out.push(`<text x="${sx+spineWidth/2}" y="${sy+8}" text-anchor="middle" fill="#9bacb9" font-size="7">${spinePortUsage[si]} / ${spinePortsPerSwitch} ports</text>`);
     }
     out.push('</svg>');
-    // Outer SVG identity is retained; replace its contents and sizing.
     const svg=$('diagram'); svg.outerHTML=out.join('');
     lastSchedule=scheduleRows;
     applyZoom();
+    $('diagram-note').textContent=activeProfile.selectablePlanes
+      ? `Each rack is shown once. GPU rail colors and plane line patterns identify each of the ${planes} active plane paths. ${planesPerLeaf>1?`${torModel.name} leaves group ${planesPerLeaf} planes.`:'Each plane has its own leaf group.'}`
+      : 'Each rack is shown once. Every GPU has one visible cable to each independent plane.';
+    $('legend').innerHTML=Array.from({length:planes},(_,plane)=>`<span><svg width="18" height="6" aria-hidden="true"><line x1="0" y1="3" x2="18" y2="3" stroke="#b2c1cd" stroke-width="2"${planePatterns[plane]?` stroke-dasharray="${planePatterns[plane]}"`:''}/></svg> Plane ${plane+1}</span>`).join('')+
+      `<span><i class="swatch" style="color:#f0a35e;background:#f0a35e"></i>Rail color identifies GPU position</span><span><i class="legend-line up"></i>Leaf to spine uplinks</span>`;
+    $('footer').textContent=activeProfile.selectablePlanes
+      ? 'Planning model: Vera Rubin NVL72 has 18 compute trays and 72 GPU packages per rack, with four GPU-position rails and up to eight active compute planes. Link speed and active plane count are configurable. SN6800-LD leaves span four planes; SN6600-LD and SN6810-LD use one leaf group per plane. Counts are capacity estimates and do not include shuffle hardware or a topology-specific reference architecture bill of materials.'
+      : 'Planning model: GB300 NVL72 has 18 compute trays and 72 GPUs per rack, with four GPU-position rails connected to two separate compute planes. The selected Cisco switch model sets ToR port capacity; configured link speeds set bandwidth. Spine capacity uses the configured spine interface count. This planner estimates switch counts and does not reproduce a topology-specific reference-architecture layout.';
     $('rail-grid').innerHTML=Array.from({length:railPlaneCount},(_,group)=>{
-      const plane=Math.floor(group/GPUS_PER_TRAY), rail=group%GPUS_PER_TRAY, c=colors[rail];
-      return `<div class="rail-row"><div class="rail-name"><i class="swatch" style="color:${c};background:${c}"></i>Plane ${plane===0?'A':'B'} · Rail ${rail}</div><div class="rail-meta">${endpointsPerRail} GPU links<br>${leavesPerRail} leaf · ${uplinksPerRail} uplinks</div></div>`;
+      const bank=Math.floor(group/GPUS_PER_TRAY), rail=group%GPUS_PER_TRAY, c=colors[rail], data=bankData[bank];
+      const planeLanes=endpointsPerRail*data.bankPlanes;
+      return `<div class="rail-row"><div class="rail-name"><i class="swatch" style="color:${c};background:${c}"></i>${planeLabel(bank)} · Rail ${rail}</div><div class="rail-meta">${planeLanes} GPU-plane lanes<br>${data.leaves} leaf · ${data.uplinksPerRail} uplinks</div></div>`;
     }).join('');
   }
   [racksInput,torPortsInput,spinePortsInput,downlinkSpeedInput,uplinkSpeedInput].forEach(el=>el.addEventListener('input',render));
   torPortsInput.addEventListener('change',()=>{
-    torPortsInput.value=Math.max(4,Math.min(256,Math.trunc(Number(torPortsInput.value)||64)));
+    torPortsInput.value=Math.max(4,Math.min(512,Math.trunc(Number(torPortsInput.value)||64)));
     render();
   });
-  torModelInput.addEventListener('change',render);
+  nvlModelInput.addEventListener('change',()=>{selectProfile(nvlModelInput.value);render();});
+  planeCountInput.addEventListener('change',render);
+  torModelInput.addEventListener('change',()=>{
+    const model=selectedSwitch();
+    const maxSpeed=model?.maxSpeed||1600;
+    downlinkSpeedInput.value=Math.min(activeProfile.linkSpeed,maxSpeed);
+    uplinkSpeedInput.value=Math.min(activeProfile.uplinkSpeed,maxSpeed);
+    spinePortsInput.value=model?.ports||64;
+    render();
+  });
   preventOversubInput.addEventListener('change',render);
   zoomInput.addEventListener('input',applyZoom);
   $('fit-button').addEventListener('click',()=>{
