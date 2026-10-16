@@ -17,6 +17,8 @@ Leaf and spine counts are calculated from the selected interface counts and link
 
 Choose one of the Cisco Nexus ToR models in the app. The model selection sets the switch's front-panel data-port count and maximum per-port rate; the downlink and uplink rate inputs represent the configured native or breakout link speeds used in the estimate.
 
+Select **Freeform** to enter a custom ToR port count directly. Freeform switch model and per-port speeds are user assumptions and are not validated against a hardware datasheet.
+
 | Cisco Nexus model | Data ports | Maximum rate per port |
 | --- | ---: | ---: |
 | 9332D-H2R | 32 | 400 Gb/s |

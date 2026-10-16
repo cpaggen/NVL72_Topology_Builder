@@ -25,6 +25,8 @@
     .field { position:relative }
     input[type="number"] { appearance:none; width:100%; padding:11px 43px 11px 12px; background:#0b121a; color:var(--text); border:1px solid #344657; border-radius:9px; font:600 15px inherit; font-size:15px; outline:none; transition:border .15s,box-shadow .15s }
     input[type="number"]:focus { border-color:var(--accent); box-shadow:0 0 0 3px #80e0c11b }
+    input[type="number"].no-spinner { -moz-appearance:textfield; appearance:textfield }
+    input[type="number"].no-spinner::-webkit-inner-spin-button, input[type="number"].no-spinner::-webkit-outer-spin-button { -webkit-appearance:none; margin:0 }
     .suffix { position:absolute; top:50%; right:12px; transform:translateY(-50%); font-size:11px; color:#8295a7; pointer-events:none }
     select { appearance:none; width:100%; padding:11px 12px; background:#0b121a; color:var(--text); border:1px solid #344657; border-radius:9px; font:inherit; font-size:13px; outline:none }
     select:focus { border-color:var(--accent); box-shadow:0 0 0 3px #80e0c11b }
@@ -92,7 +94,9 @@
           <option value="9164E-NS4-O">Cisco Nexus 9164E-NS4-O · 64 × 800G</option>
           <option value="N9364F-SG3-L">Cisco Nexus N9364F-SG3-L · 64 × 1.6T</option>
           <option value="N9364F-SG3-A">Cisco Nexus N9364F-SG3-A · 64 × 1.6T</option>
+          <option value="freeform">Freeform · enter port count</option>
         </select><p class="hint" id="tor-model-hint">32 front-panel data ports; maximum 400 Gb/s per port.</p>
+        <div id="freeform-ports-wrap" hidden><label for="freeform-ports">Ports per ToR switch</label><div class="field"><input id="freeform-ports" class="no-spinner" type="number" min="4" max="256" step="1" value="64" inputmode="numeric" /><span class="suffix">ports</span></div><p class="hint">Type the port count directly (for example, 32, 64, or 128).</p></div>
         <label for="spine-ports">Interfaces per spine switch</label><div class="field"><input id="spine-ports" type="number" min="4" max="256" step="1" value="64" /><span class="suffix">ports</span></div><p class="hint">Spine count is sized to the total ToR uplink demand.</p>
         <label for="downlink-speed">GPU-to-plane link speed</label><div class="field"><input id="downlink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint">Each GPU has one 400G link to each independent plane in this reference design.</p>
         <label for="uplink-speed">ToR-to-spine uplink speed</label><div class="field"><input id="uplink-speed" type="number" min="25" max="1600" step="25" value="400" /><span class="suffix">Gb/s</span></div><p class="hint">Uplink ports are sized by bandwidth. For example, 2 × 400G downlinks need 1 × 800G uplink.</p>
@@ -131,7 +135,7 @@
     'N9364F-SG3-L': {name:'Cisco Nexus N9364F-SG3-L', ports:64, maxSpeed:1600},
     'N9364F-SG3-A': {name:'Cisco Nexus N9364F-SG3-A', ports:64, maxSpeed:1600}
   };
-  const racksInput = $('racks'), torModelInput = $('tor-model'), spinePortsInput = $('spine-ports');
+  const racksInput = $('racks'), torModelInput = $('tor-model'), torPortsInput = $('freeform-ports'), spinePortsInput = $('spine-ports');
   const downlinkSpeedInput = $('downlink-speed'), uplinkSpeedInput = $('uplink-speed');
   const preventOversubInput = $('prevent-oversub');
   const zoomInput = $('zoom');
@@ -146,8 +150,13 @@
   }
   function render() {
     let racks = Math.max(1, Math.min(32, Math.trunc(Number(racksInput.value)||1)));
-    const torModel = TOR_MODELS[torModelInput.value] || TOR_MODELS['9364E-SG2'];
-    let torPorts = torModel.ports;
+    const isFreeform = torModelInput.value === 'freeform';
+    let torPorts = isFreeform
+      ? Math.max(4, Math.min(256, Math.trunc(Number(torPortsInput.value)||64)))
+      : (TOR_MODELS[torModelInput.value] || TOR_MODELS['9364E-SG2']).ports;
+    const torModel = isFreeform
+      ? {name:'Freeform switch', ports:torPorts, maxSpeed:1600}
+      : (TOR_MODELS[torModelInput.value] || TOR_MODELS['9364E-SG2']);
     let spinePortsPerSwitch = Math.max(4, Math.min(256, Math.trunc(Number(spinePortsInput.value)||4)));
     let downlinkSpeed = Math.max(25, Math.min(torModel.maxSpeed, Number(downlinkSpeedInput.value)||25));
     let uplinkSpeed = Math.max(25, Math.min(torModel.maxSpeed, Number(uplinkSpeedInput.value)||25));
@@ -155,7 +164,10 @@
     spinePortsInput.value = spinePortsPerSwitch;
     downlinkSpeedInput.value = downlinkSpeed; uplinkSpeedInput.value = uplinkSpeed;
     downlinkSpeedInput.max = torModel.maxSpeed; uplinkSpeedInput.max = torModel.maxSpeed;
-    $('tor-model-hint').textContent = `${torPorts} front-panel data ports; maximum ${torModel.maxSpeed >= 1000 ? `${(torModel.maxSpeed/1000).toFixed(1)} Tb/s` : `${torModel.maxSpeed} Gb/s`} per port. Configured link rates model supported native or breakout modes.`;
+    $('freeform-ports-wrap').hidden = !isFreeform;
+    $('tor-model-hint').textContent = isFreeform
+      ? `${torPorts} user-defined ports; the switch model and per-port rate are not validated.`
+      : `${torPorts} front-panel data ports; maximum ${torModel.maxSpeed >= 1000 ? `${(torModel.maxSpeed/1000).toFixed(1)} Tb/s` : `${torModel.maxSpeed} Gb/s`} per port. Configured link rates model supported native or breakout modes.`;
     const endpointsPerRail = racks*TRAYS_PER_RACK;
     const baselineLeavesPerRail = Math.ceil(endpointsPerRail/torPorts);
     const preventOversub = preventOversubInput.checked;
@@ -295,7 +307,11 @@
       return `<div class="rail-row"><div class="rail-name"><i class="swatch" style="color:${c};background:${c}"></i>Plane ${plane===0?'A':'B'} · Rail ${rail}</div><div class="rail-meta">${endpointsPerRail} GPU links<br>${leavesPerRail} leaf · ${uplinksPerRail} uplinks</div></div>`;
     }).join('');
   }
-  [racksInput,spinePortsInput,downlinkSpeedInput,uplinkSpeedInput].forEach(el=>el.addEventListener('input',render));
+  [racksInput,torPortsInput,spinePortsInput,downlinkSpeedInput,uplinkSpeedInput].forEach(el=>el.addEventListener('input',render));
+  torPortsInput.addEventListener('change',()=>{
+    torPortsInput.value=Math.max(4,Math.min(256,Math.trunc(Number(torPortsInput.value)||64)));
+    render();
+  });
   torModelInput.addEventListener('change',render);
   preventOversubInput.addEventListener('change',render);
   zoomInput.addEventListener('input',applyZoom);
